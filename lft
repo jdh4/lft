@@ -335,5 +335,19 @@ except:
   divider('size of /home', '')
   print("du failed so no info")
 
+# downtime
+divider('downtime', '')
+import calendar
+c = calendar.Calendar(firstweekday=calendar.SUNDAY)
+today = datetime.today()
+year = today.year; month = today.month
+
+monthcal = c.monthdatescalendar(year, month)
+all_tues_of_month = [day for week in monthcal for day in week if \
+                     day.weekday() == calendar.TUESDAY and \
+                     day.month == month]
+second_tues = all_tues_of_month[1]
+print(second_tues) # in x days or was 7 days ago
+
 print("")
 print("")
