@@ -17,6 +17,8 @@ sys.path.append('/scratch/gpfs/jdh4/gpustat') # to find dossier
 sys.path.append('/tiger/scratch/gpfs/jdh4/gpustat') # to find dossier from tigressdata
 import math
 import subprocess
+from datetime import datetime
+from time import time
 from socket import gethostname
 from dossier import ldap_plus
 
@@ -33,7 +35,9 @@ def print_columns(items, columns=5):
     for j in range(columns):
       idx = j + columns * i
       if idx < len(items):
-        s += items[idx].strip() + ' ' * (max_chars - len(items[idx])) + "\t"
+        item = items[idx].strip()
+        if len(item) > 12: item = item[:12]
+        s += item + ' ' * (max_chars - len(items[idx])) + "\t"
     print(s)
   return None
 
@@ -69,10 +73,7 @@ else:
 
 host = gethostname().lower()
 
-print(chr(27)+'[2j')
-print('\033c')
-print('\x1bc')
-print("===============================================================================")
+_ = subprocess.run('clear', shell=True)
 print("===============================================================================")
 print("===============================================================================")
 print("lft is looking for trouble on", host)
@@ -88,10 +89,19 @@ if p[7]: print("Sponsor:", p[7])
 if p[9]: print("NetID:", p[9])
 
 # modification time of /home/<NetID>
-from datetime import datetime
-from time import time
-mtime = datetime.fromtimestamp(os.stat(home).st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-print("Last modified /home:", mtime)
+mtime = datetime.fromtimestamp(os.stat(home).st_mtime)
+dt = datetime.today() - mtime
+if dt.days == 0:
+  hours = dt.seconds // 3600
+  minutes = dt.seconds // 60
+  if hours > 1:
+    print(f"Active: {hours} ago")
+  elif minutes > 1:
+    print(f"Active: {minutes} minutes ago")
+  else:
+    print(f"Active: {dt.seconds} seconds ago")
+else:
+  print(f"Active: {dt.days} days ago")
 
 brc_default="""
 # .bashrc
@@ -139,6 +149,7 @@ def format_modules(module_lines):
 divider('.bashrc', '')
 aliases = 0
 exports = 0
+pythonpath=None
 modules = []
 if Path(home + '/.bashrc').exists():
   with open(home + '/.bashrc') as f:
@@ -149,7 +160,7 @@ if Path(home + '/.bashrc').exists():
       print("Custom .bashrc")
       lines = brc.split('\n')
       for line in lines:
-        line = line.strip().lower()
+        line = line.strip().lower() # lower causes problem with dirs with caps
         if (line.startswith('module') and ('load' in line or 'add' in line) and
             not 'alias' in line):
           modules.append(line)
@@ -157,6 +168,8 @@ if Path(home + '/.bashrc').exists():
           aliases += 1
         if ('export' in line and not line.startswith('#')):
           exports += 1
+        if ('pythonpath' in line and not line.startswith('#')):
+          pythonpath=line
         # check anaconda3 or miniconda3 in .bashrc
         if line.strip().startswith('#'): continue
         if 'miniconda' in line.lower() and 'path' in line.lower():
@@ -165,6 +178,7 @@ if Path(home + '/.bashrc').exists():
           print('anaconda')
       print("\t Number of aliases:", aliases)
       print("\t Number of exports:", exports)
+      if pythonpath: print("\t ", pythonpath)
       if modules:
         for module in format_modules(modules):
           print("\t", module)
@@ -180,6 +194,7 @@ if Path(path).exists():
       print("Custom .bash_profile")
 
 # .conda
+versions = ['2.7', '3.6', '3.7', '3.8']
 divider('Python', '')
 dot_conda = home + '/.conda'
 if Path(dot_conda).exists():
@@ -198,6 +213,22 @@ if Path(dot_conda).exists():
     #print("~/.conda pkgs:", ' '.join(found))
     print("~/.conda pkgs:")
     print_columns(list(set([pkg.split('-')[0] for pkg in os.listdir(pkgs)])))
+
+divider('Python', '')
+dot_conda = home + '/.conda'
+if Path(dot_conda).exists():
+  path = dot_conda + '/envs'
+  if Path(path).exists():
+    envs = os.listdir(path)
+    if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
+    for env in envs:
+      mtime = datetime.fromtimestamp(os.stat(dot_conda + f'/envs/{env}').st_mtime)
+      print("\t", env, mtime.strftime(' (last modified %-m/%-d/%Y)'))
+      for version in versions:
+        path = f'{home}/.conda/envs/{env}/lib/python{version}/site-packages'
+        if Path(path).exists():
+          pkgs = os.listdir(path)
+          print_columns(pkgs)
 
 # .condarc
 path = home + '/.condarc'
@@ -246,6 +277,14 @@ makevars = home + '/.R/Makevars'
 if os.path.isfile(makevars):
   print(makevars, "exists")
 
+# julia
+path = home + '/.julia/packages'
+if Path(path).exists():
+  if is_rx(path):
+    divider('julia', '')
+    pkgs = os.listdir(path)
+    print_columns(pkgs)
+
 # filesystems
 divider('filesystems', '')
 if ('adroit' in host):
@@ -268,6 +307,12 @@ if is_cluster:
 # RLIBS or whatever people set in .bashrc
 
 # ondemand
+path = home + '/ondemand'
+if Path(path).exists():
+  if is_rx(path):
+    divider('ondemand', '')
+    if Path(path + '/data/sys/dashboard/batch_connect/sys/rstudio_server').exists():
+      print("Ondemand RStudio")
 
 # squeue
 if is_cluster:
@@ -318,7 +363,7 @@ for line in lines:
   if "Manager" in line and "has sponsored" in line:
     # Manager curt (Curtis W. Hillegas) has sponsored the following users
     sponsor_full_name = line.split('(')[1].split(')')[0]
-    print("Sponsor:", sponsor_full_name)
+    print("Sponsor:", sponsor_full_name, f'({sponsor})')
   if netid in line and 'has accounts on' in line:
     # jdh4 (Jonathan D. Halverson) has accounts on della, perseus, tiger, traverse
     clusters = line.split('has accounts')[-1].replace(',', '').split()[1:]
@@ -389,11 +434,11 @@ def previous_and_next_downtime_dates():
   month = today.month
 
   second_tues = second_tues_of_month(year, month)
-  td = today - second_tues
+  dt = today - second_tues
 
   fmt = '%b %-d'
   divider('downtime', '')
-  if td.days > 0:
+  if dt.days >= 0:
     # downtime in current month is lower bound so get downtime next month
     month += 1
     if month ==  13:
@@ -401,8 +446,9 @@ def previous_and_next_downtime_dates():
       year += 1
     next_second_tues = second_tues_of_month(year, month)
     nxt = next_second_tues - today
+    prv = today - second_tues
     tues = [second_tues.strftime(fmt), next_second_tues.strftime(fmt)]
-    print(f"{tues[0]} --- next downtime in {nxt.days} days --- {tues[1]}")
+    print(f"{tues[0]} ({prv.days} days ago) <----- downtime -----> ({nxt.days} days ahead) {tues[1]}")
   else:
     # downtime in current month is upper bound so get downtime last month
     month -= 1
@@ -411,8 +457,9 @@ def previous_and_next_downtime_dates():
       year -= 1
     prev_second_tues = second_tues_of_month(year, month)
     nxt = second_tues - today
+    prv = today - second_tues
     tues = [prev_second_tues, second_tues]
-    print(f"{tues[0]} --- next downtime in {nxt.days} days --- {tues[1]}")
+    print(f"{tues[0]} ({prv.days} days ago) <----- downtime -----> ({nxt.days} days ahead) {tues[1]}")
   return None
 
 _ = previous_and_next_downtime_dates()
