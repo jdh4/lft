@@ -1,4 +1,4 @@
-#!/usr/licensed/anaconda3/2020.2/bin/python
+#!/scratch/gpfs/jdh4/blessed-env/bin/python
 # ltf is looking for trouble
 
 # $ find /home -maxdepth 2 -name .bashrc -type f -exec diff -q /home/csimao/.bashrc {} \; 2>/dev/null | wc -l
@@ -12,7 +12,7 @@
 
 import os
 import sys
-sys.path = list(filter(lambda p: p.startswith("/usr"), sys.path))
+#sys.path = list(filter(lambda p: p.startswith("/usr"), sys.path))
 sys.path.append('/scratch/gpfs/jdh4/gpustat') # to find dossier
 sys.path.append('/tiger/scratch/gpfs/jdh4/gpustat') # to find dossier from tigressdata
 import math
@@ -21,6 +21,7 @@ from datetime import datetime
 from time import time
 from socket import gethostname
 from dossier import ldap_plus
+from blessed import Terminal
 
 def print_help():
   print("lft is looking for trouble. Example usage:")
@@ -55,60 +56,74 @@ def divider(title, msg):
 if ('-h' in ''.join(sys.argv) or '--help' in ''.join(sys.argv)):
   print_help()
 
-if (len(sys.argv) != 2):
-  print("Wrong number of command-line parameters. Example usage: $ lft aturing")
+verbose = False
+if ('-v' in ''.join(sys.argv) or '--verbose' in ''.join(sys.argv)):
+  verbose = True
+
+if (len(sys.argv) > 3):
+  print("Wrong number of command-line parameters. Example usage: $ lft aturing -v")
   sys.exit(0)
 
 netid = sys.argv[1].strip()
+# TODO: make code work for email aliases and non-existent netid
+# need to check if netid is legit before going forward
 
 from pathlib import Path
 home = '/home/' + netid
 if Path(home).exists():
   if not is_rx(home):
     print(home, "is not accessible.")
-    sys.exit(0)
+    #sys.exit(0)
 else:
   print(home, "does not exist.")
-  sys.exit(0)
+  #sys.exit(0)
 
 host = gethostname().lower()
 
-_ = subprocess.run('clear', shell=True)
+term = Terminal()
+#print(term.home + term.black_on_orange + term.clear)
+print(term.home + term.clear)
+print(f"Terminal size: {term.width}x{term.height}")
 print("===============================================================================")
 print("===============================================================================")
-print("lft is looking for trouble on", host)
+print(f"lft is looking for trouble on {host} for {netid}")
 print("===============================================================================")
 
-# ldapsearch
+# ldapsearch (launch as task)
 person = ldap_plus([netid])
 p = person[1]
-if p[0]: print("Name:", p[0])
-if p[1]: print("Dept:", p[1])
+if p[0]: print("    Name:", term.bold(p[0]))
+if p[9]: print("   NetID:", p[9])
+print("")
+if p[1]: print("    Dept:", p[1])
 if p[3]: print("Position:", p[3])
-if p[7]: print("Sponsor:", p[7])
-if p[9]: print("NetID:", p[9])
 
 # modification time of /home/<NetID>
-mtime = datetime.fromtimestamp(os.stat(home).st_mtime)
-dt = datetime.today() - mtime
-if dt.days == 0:
-  hours = dt.seconds // 3600
-  minutes = dt.seconds // 60
-  if hours > 1:
-    print(f"Active: {hours} ago")
-  elif minutes > 1:
-    print(f"Active: {minutes} minutes ago")
-  else:
-    print(f"Active: {dt.seconds} seconds ago")
+if Path(home).exists():
+  if True:
+    mtime = datetime.fromtimestamp(os.stat(home).st_mtime)
+    dt = datetime.today() - mtime
+    if dt.days == 0:
+      hours = dt.seconds // 3600
+      minutes = dt.seconds // 60
+      if hours > 1:
+        print(f"  Active: {hours} hours ago")
+      elif minutes > 1:
+        print(f"  Active: {minutes} minutes ago")
+      else:
+        print(f"  Active: {dt.seconds} seconds ago")
+    else:
+      print(f"  Active: {dt.days} days ago")
 else:
-  print(f"Active: {dt.days} days ago")
+  print("  Active: N/A")
+print("")
 
 brc_default="""
 # .bashrc
 
 # Source global definitions
 if [ -f /etc/bashrc ]; then
-	. /etc/bashrc
+        . /etc/bashrc
 fi
 
 # Uncomment the following line if you don't like systemctl's auto-paging feature:
@@ -122,7 +137,7 @@ bpro_default = """
 
 # Get the aliases and functions
 if [ -f ~/.bashrc ]; then
-	. ~/.bashrc
+        . ~/.bashrc
 fi
 
 # User specific environment and startup programs
@@ -146,94 +161,97 @@ def format_modules(module_lines):
   return singles
 
 # .bashrc
-divider('.bashrc', '')
+divider('Environment', '')
 aliases = 0
 exports = 0
 pythonpath=None
 modules = []
-if Path(home + '/.bashrc').exists():
-  with open(home + '/.bashrc') as f:
+path = home + '/.bashrc'
+if Path(home).exists() and is_rx(home) and os.path.isfile(path):
+  with open(path) as f:
     brc = f.read()
-    if ('\n' + brc == brc_default):
-      print("Default .bashrc")
-    else:
-      print("Custom .bashrc")
-      lines = brc.split('\n')
-      for line in lines:
-        line = line.strip().lower() # lower causes problem with dirs with caps
-        if (line.startswith('module') and ('load' in line or 'add' in line) and
-            not 'alias' in line):
-          modules.append(line)
-        if ('alias' in line and not line.startswith('#')):
-          aliases += 1
-        if ('export' in line and not line.startswith('#')):
-          exports += 1
-        if ('pythonpath' in line and not line.startswith('#')):
-          pythonpath=line
-        # check anaconda3 or miniconda3 in .bashrc
-        if line.strip().startswith('#'): continue
-        if 'miniconda' in line.lower() and 'path' in line.lower():
-          print('miniconda')
-        if 'anaconda' in line.lower() and 'path' in line.lower():
-          print('anaconda')
-      print("\t Number of aliases:", aliases)
-      print("\t Number of exports:", exports)
-      if pythonpath: print("\t ", pythonpath)
-      if modules:
-        for module in format_modules(modules):
-          print("\t", module)
+  if ('\n' + brc == brc_default):
+    print(".bashrc: default")
+  else:
+    print(".bashrc: custom")
+    lines = brc.split('\n')
+    for line in lines:
+      line = line.strip().lower() # lower causes problem with dirs with caps
+      if (line.startswith('module') and ('load' in line or 'add' in line) and \
+        not 'alias' in line):
+        modules.append(line)
+      if ('alias' in line and not line.startswith('#')):
+        aliases += 1
+      if ('export' in line and not line.startswith('#')):
+        exports += 1
+      if ('pythonpath' in line and not line.startswith('#')):
+        pythonpath=line
+      # check anaconda3 or miniconda3 in .bashrc
+      if line.strip().startswith('#'): continue
+      if 'miniconda' in line.lower() and 'path' in line.lower():
+        print('miniconda')
+      if 'anaconda' in line.lower() and 'path' in line.lower():
+        print('anaconda')
+    print("   Number of aliases:", aliases)
+    print("   Number of exports:", exports)
+    if pythonpath: print("\t ", pythonpath)
+    if modules:
+      for module in format_modules(modules):
+        print(f"   {term.bold}{term.red}{module}{term.normal}")
 
 # bash_profile
 # TODO: examine this as like .bashrc for modules and aliases
 path = home + '/.bash_profile'
-if Path(path).exists():
+if is_rx(home) and Path(path).exists():
   with open(path) as f:
     bpro = f.read()
     if ('\n' + bpro != bpro_default):
-      divider('.bash_profile', '')
-      print("Custom .bash_profile")
+      print(".bash_profile: custom")
+    else:
+      print(".bash_profile: default")
 
 # .conda
 versions = ['2.7', '3.6', '3.7', '3.8']
-divider('Python', '')
+#divider('Python', '')
 dot_conda = home + '/.conda'
-if Path(dot_conda).exists():
+if is_rx(home) and Path(dot_conda).exists():
   envs_path = dot_conda + '/envs'
   if Path(envs_path).exists():
     envs = os.listdir(envs_path)
     if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
-    print("~/.conda envs:")
+    #print("~/.conda envs:")
     for env in envs:
-      print("\t", env)
+      #print("\t", env)
+      pass
   pkgs = dot_conda + '/pkgs'
   if Path(pkgs).exists():
     patterns = ['mpi4py', 'mpich', 'cudatoolkit', 'keras', 'tensorflow', 'numpy', \
                 'scipy', 'matplotlib', 'pandas', 'pytorch', 'geopandas']
     found = set([p for p in patterns for pkg in os.listdir(pkgs) if p in pkg])
     #print("~/.conda pkgs:", ' '.join(found))
-    print("~/.conda pkgs:")
-    print_columns(list(set([pkg.split('-')[0] for pkg in os.listdir(pkgs)])))
+    #print("~/.conda pkgs:")
+    #print_columns(list(set([pkg.split('-')[0] for pkg in os.listdir(pkgs)])))
 
 divider('Python', '')
 dot_conda = home + '/.conda'
-if Path(dot_conda).exists():
+if is_rx(home) and Path(dot_conda).exists():
   path = dot_conda + '/envs'
   if Path(path).exists():
     envs = os.listdir(path)
     if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
     for env in envs:
       mtime = datetime.fromtimestamp(os.stat(dot_conda + f'/envs/{env}').st_mtime)
-      print("\t", env, mtime.strftime(' (last modified %-m/%-d/%Y)'))
+      print("\t", term.bold(env), mtime.strftime(' (last modified %-m/%-d/%Y)'))
       for version in versions:
         path = f'{home}/.conda/envs/{env}/lib/python{version}/site-packages'
-        if Path(path).exists():
-          pkgs = os.listdir(path)
+        if Path(path).exists() and verbose:
+          pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
           print_columns(pkgs)
 
 # .condarc
 path = home + '/.condarc'
-if Path(path).exists():
-  divider('~/.condarc', '.condarc was found')
+if is_rx(home) and Path(path).exists():
+  print(f"{term.bold}{term.red}~/.condarc{term.normal} was found")
 
 # .local
 # pip install --user <package>
@@ -244,7 +262,7 @@ if os.path.isdir(path):
     for version in versions:
       path = home + '/.local/lib/python' + version + '/site-packages'
       if os.path.isdir(path) and is_rx(path):
-        pkgs = os.listdir(path)
+        pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
         print("== --user ==", path, "==")
         if pkgs: print_columns([pkg.split('-')[0] for pkg in pkgs])
   else:
@@ -256,53 +274,64 @@ else:
 
 # .cache
 path = home + '/.cache'
-if Path(path).exists():
-  divider('~/.cache', '.cache was found')
+if is_rx(home) and Path(path).exists():
+  #divider('~/.cache', '.cache was found')
+  pass
 
 # R
 path = home + '/R'
 if Path(path).exists():
   path = home + '/R/x86_64-redhat-linux-gnu-library/3.6' #TODO: 4.0
-  divider('R', '')
   if Path(path).exists() and is_rx(path):
     pkgs = os.listdir(path)
     patterns = ['sf', 'dplyr', 'lubridate', 'tidyverse', 'tibble', 'ggplot2', 'caret', \
                 'Rmpi', 'doMPI', 'data.table']
     found = set([p for p in patterns for pkg in pkgs if p in pkg])
+    divider('R', '')
     print("R pkgs:", ' '.join(found))
-    print_columns(pkgs)
+    if verbose: print_columns(pkgs)
  
 # Makevars
 makevars = home + '/.R/Makevars'
 if os.path.isfile(makevars):
   print(makevars, "exists")
 
-# julia
+# ~/.julia
 path = home + '/.julia/packages'
 if Path(path).exists():
   if is_rx(path):
-    divider('julia', '')
     pkgs = os.listdir(path)
-    print_columns(pkgs)
+    if verbose: print_columns(pkgs)
+    if verbose: divider('julia', '')
+
+# ~/.matlab
+path = home + '/.matlab'
+if Path(path).exists():
+  if is_rx(path):
+    divider('matlab', '')
+    # versions used via slurm or interactively
+    versions_used = os.listdir(path)
+    print(' '.join(versions_used))
 
 # filesystems
 divider('filesystems', '')
-if ('adroit' in host):
-  path = '/scratch/network/' + netid
-  if is_rx(path) and Path(path).exists():
-    print(path, "is public")
-
-clusters = ['perseus', 'della', 'tiger', 'traverse']
+clusters = ['adroit', 'perseus', 'della', 'tiger', 'traverse']
 is_cluster = any([cluster in host for cluster in clusters])
 
-if is_cluster:
+if is_cluster: # why do it this way
+  path = '/home/' + netid
+  if os.path.isdir(path) and not is_rx(path):
+    print("        " + path, "is private")
   path = '/scratch/gpfs/' + netid
-  #if Path(path).exists():
   if os.path.isdir(path):
     print(path, "is public (" + str(len(os.listdir(path))), "items)") if is_rx(path) else print(path, "is private")
   path = '/tigress/' + netid
   if Path(path).exists():
-    print('     ' + path, "is public (" + str(len(os.listdir(path))), "items)") if is_rx(path) else print(path, "is private")
+    print("     " + path, "is public (" + str(len(os.listdir(path))), "items)") if is_rx(path) else print(path, "is private")
+  if ('della' in host or 'adroit' in host):
+    path = '/scratch/network/' + netid
+    if Path(path).exists():
+      print('     ' + path, "is public (" + str(len(os.listdir(path))), "items)") if is_rx(path) else print(path, "is private")
 
 # RLIBS or whatever people set in .bashrc
 
@@ -314,25 +343,7 @@ if Path(path).exists():
     if Path(path + '/data/sys/dashboard/batch_connect/sys/rstudio_server').exists():
       print("Ondemand RStudio")
 
-# squeue
-if is_cluster:
-  cmd = "squeue -u " + netid
-  output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
-  lines = output.stdout.decode("utf-8").split('\n')
-  running = 0
-  queued = 0
-  for line in lines:
-    if (' R ' in line): running += 1
-    if (' PD ' in line): queued += 1
-  if (running or queued):
-    msg =  "Number of running jobs: " + str(running) + "\n"
-    msg += "Number of queued jobs: " + str(queued)
-    divider('squeue', msg)
-
-# todo: get accounts on adroit by cron and ssh/scp
-
 # id
-divider('id', '')
 cmd = "id " + netid
 output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
 lines = output.stdout.decode("utf-8").split('\n')[0]
@@ -342,10 +353,13 @@ for item in items:
   if 'gid=' in item: gid = item[item.index('(') + 1:item.index(')')]
   if 'groups=' in item:
     grps = [s[s.index('(') + 1:s.index(')')] for s in item.split(',')]
-print(lines, gid, grps)
+    if len(grps) > 3:
+      grps = ','.join(grps[:3]) + ',...'
+    else:
+      grps = ','.join(grps)
+    print(term.move_xy(2, 8) + "Groups: " + grps)
 
 # sponsor_report
-divider('sponsor_report', '')
 cmd = "sponsor_report " + netid
 output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
 lines = output.stdout.decode("utf-8").split('\n')
@@ -356,6 +370,18 @@ elif "Manager" in lines[0] and "has sponsored" in lines[0]:
   sponsor = netid
 # how to get clusters for managers?
 
+def remove_middle_initial(full_name):
+  parts = full_name.split()
+  cnt = len(parts)
+  if (cnt > 2):
+    for i in range(1, cnt - 1):
+      if (parts[i].endswith('.') and (len(parts[i]) == 2)) or len(parts[i]) == 1:
+        _ = parts.pop(i)
+      return ' '.join(parts)
+  else:
+    return full_name
+
+accounts = []
 cmd = "sponsor_report " + sponsor
 output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
 lines = output.stdout.decode("utf-8").split('\n')
@@ -363,24 +389,53 @@ for line in lines:
   if "Manager" in line and "has sponsored" in line:
     # Manager curt (Curtis W. Hillegas) has sponsored the following users
     sponsor_full_name = line.split('(')[1].split(')')[0]
-    print("Sponsor:", sponsor_full_name, f'({sponsor})')
+    sponsor_full_name = remove_middle_initial(sponsor_full_name)
+    print(term.move_xy(1, 12) + f"Sponsor: {sponsor_full_name} ({sponsor})")
   if netid in line and 'has accounts on' in line:
     # jdh4 (Jonathan D. Halverson) has accounts on della, perseus, tiger, traverse
-    clusters = line.split('has accounts')[-1].replace(',', '').split()[1:]
-    if 'mcmillan' in clusters: clusters.remove('mcmillan')
-    print("Clusters:", ' '.join(clusters))
+    accounts = line.split('has accounts')[-1].replace(',', '').split()[1:]
+    if 'mcmillan' in accounts: accounts.remove('mcmillan')
 
+# check for account adroit
 path = '/tigress/jdh4/python-devel/lft'
 with open(path + '/adroit_getent.txt', 'r') as f:
   adroit_users = f.readlines()
 for user in adroit_users:
   if user == netid + '\n':
-    print('has Adroit')
+   accounts.append("adroit")
+# check for account on tigressdata
 with open(path + '/tigressdata_getent.txt', 'r') as f:
   tg_users = f.readlines()
 for user in tg_users:
   if user == netid + '\n':
-    print('has Tigressdata')
+    accounts.append("tigressdata")
+# print accounts
+print(term.move_xy(50, 6))
+for account in sorted(accounts):
+  pre = "*" if account in host else " "
+  print(term.move_x(50) + pre + account)
+
+print(term.move_y(40))
+# squeue
+if is_cluster:
+  cmd = "squeue -u " + netid
+  output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
+  lines = output.stdout.decode("utf-8").split('\n')
+  running = 0
+  queued = 0
+  qosmax = 0
+  reqnode = 0
+  for line in lines:
+    if (' R ' in line): running += 1
+    if (' PD ' in line): queued += 1
+    if (' QOSMax' in line): qosmax += 1
+    if ('ReqNodeNotAvail' in line): reqnode += 1
+  if (running or queued or qosmax or reqnode):
+    msg =  "Running: " + str(running) + "\n"
+    msg += "Queued: " + str(queued) + "\n"
+    msg += "QOSMax: " + str(qosmax) + "\n"
+    msg += "ReqNodeNotAvail: " + str(reqnode)
+    divider(f'squeue -u {netid}', msg)
 
 # sacct
 start_stamp = datetime.fromtimestamp(time() - 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
@@ -388,8 +443,10 @@ start_stamp = datetime.fromtimestamp(time() - 24 * 60 * 60).strftime('%Y-%m-%d-%
 cmd = f"sacct -S {start_stamp} -u {netid} | egrep -v 'extern|batch|\.0 ' | tail -n 10 2>/dev/null"
 output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
 lines = output.stdout.decode("utf-8").split('\n')
-divider('sacct for last 24 hours' + host, '')
-print('\n'.join(lines))
+if (len(lines) > 3):
+  divider(f'Active and recently completed jobs on {host}', '')
+  if len(lines) > 6: lines = lines[-6:]
+  print('\n'.join(lines))
 
 # size of /home
 if 0:
@@ -448,7 +505,7 @@ def previous_and_next_downtime_dates():
     nxt = next_second_tues - today
     prv = today - second_tues
     tues = [second_tues.strftime(fmt), next_second_tues.strftime(fmt)]
-    print(f"{tues[0]} ({prv.days} days ago) <----- downtime -----> ({nxt.days} days ahead) {tues[1]}")
+    print(f"{tues[0]} ({prv.days} days ago) --- downtime --> ({nxt.days} days ahead) {tues[1]}")
   else:
     # downtime in current month is upper bound so get downtime last month
     month -= 1
@@ -457,9 +514,9 @@ def previous_and_next_downtime_dates():
       year -= 1
     prev_second_tues = second_tues_of_month(year, month)
     nxt = second_tues - today
-    prv = today - second_tues
-    tues = [prev_second_tues, second_tues]
-    print(f"{tues[0]} ({prv.days} days ago) <----- downtime -----> ({nxt.days} days ahead) {tues[1]}")
+    prv = today - prev_second_tues
+    tues = [prev_second_tues.strftime(fmt), second_tues.strftime(fmt)]
+    print(f"{tues[0]} ({prv.days} days ago) --- downtime --> ({nxt.days} days ahead) {tues[1]}")
   return None
 
 _ = previous_and_next_downtime_dates()
