@@ -5,6 +5,14 @@ This command crawls the /home directory of a specified user and reports on their
 - it can find the true netid when given an alias (thanks to R. Knight)
 - identifies MATLAB users
 
+## Installation
+
+```
+$ module load anaconda3
+$ conda create --name blessed-env --channel conda-forge blessed -y
+$ mv /home/jdh4/.conda/envs/blessed-env /scratch/gpfs/jdh4
+```
+
 Too many people have default .bashrc files these commands demonstrate:
 
 ```
