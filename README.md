@@ -25,3 +25,12 @@ Too many people have default .bashrc files these commands demonstrate:
 # $ find /home -maxdepth 2 -name .bashrc -type f -exec diff -q /home/jdh4/.bashrc {} \; 2>/dev/null | wc -l
 # 929
 ```
+
+Default .bashrc files are different on tiger versus perseus:
+
+```
+5c5
+<         . /etc/bashrc
+---
+> 	. /etc/bashrc
+```
