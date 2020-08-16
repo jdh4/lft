@@ -1,18 +1,10 @@
 #!/scratch/gpfs/jdh4/blessed-env/bin/python
-# ltf is looking for trouble
 
-# $ find /home -maxdepth 2 -name .bashrc -type f -exec diff -q /home/csimao/.bashrc {} \; 2>/dev/null | wc -l
-# 435
-# $ find /home -maxdepth 2 -name .bashrc -type f 2>/dev/null | wc -l
-# 930
-# $ ls -ld /home/* | wc -l
-# 957
-# $ find /home -maxdepth 2 -name .bashrc -type f -exec diff -q /home/jdh4/.bashrc {} \; 2>/dev/null | wc -l
-# 929
+# post issues at https://github.com/jdh4/lft
+# or write to halverson@princeton.edu
 
 import os
 import sys
-#sys.path = list(filter(lambda p: p.startswith("/usr"), sys.path))
 sys.path.append('/scratch/gpfs/jdh4/gpustat') # to find dossier
 sys.path.append('/tiger/scratch/gpfs/jdh4/gpustat') # to find dossier from tigressdata
 import math
@@ -22,6 +14,7 @@ from time import time
 from socket import gethostname
 from dossier import ldap_plus
 from blessed import Terminal
+import concurrent.futures
 
 def print_help():
   print("lft is looking for trouble. Example usage:")
@@ -43,18 +36,18 @@ def print_columns(items, columns=5):
   return None
 
 def is_rx(path):
-  # True if permissions are rx or rwx
+  # true if permissions are rx or rwx for other
   return oct(os.stat(path).st_mode)[-1] in ['5', '7']
 
 def divider(title, msg):
   print("")
-  #print("###############################################################################")
-  print("# " + title)
+  print(" " + title)
   print("===============================================================================")
   if (msg != ''): print(msg)
 
 if ('-h' in ''.join(sys.argv) or '--help' in ''.join(sys.argv)):
   print_help()
+  sys.exit(0)
 
 verbose = False
 if ('-v' in ''.join(sys.argv) or '--verbose' in ''.join(sys.argv)):
@@ -64,8 +57,15 @@ if (len(sys.argv) > 3):
   print("Wrong number of command-line parameters. Example usage: $ lft aturing -v")
   sys.exit(0)
 
-netid = sys.argv[1].strip()
-# TODO: make code work for email aliases and non-existent netid
+def get_user_info(x):
+  return ldap_plus([x])
+
+username = sys.argv[1].strip()
+with concurrent.futures.ThreadPoolExecutor() as executor:
+  future = executor.submit(get_user_info, username)
+  person = future.result()
+# what happens if ldapsearch fails?
+netid = person[1][9]
 # need to check if netid is legit before going forward
 
 from pathlib import Path
@@ -73,47 +73,60 @@ home = '/home/' + netid
 if Path(home).exists():
   if not is_rx(home):
     print(home, "is not accessible.")
-    #sys.exit(0)
 else:
   print(home, "does not exist.")
-  #sys.exit(0)
 
 host = gethostname().lower()
 
+mach = {
+'tiger.princeton.edu':'tiger',
+'tigercpu.princeton.edu':'tiger',
+'tigergpu.princeton.edu':'tiger',
+'della5.princeton.edu':'della',
+'perseus':'perseus',
+'traverse.princeton.edu':'traverse',
+'adroit4':'adroit',
+'tigressdata2.princeton.edu':'tigressdata'}
+if (host not in mach): print("Warning: host not found.")
+host = mach[host]
+
 term = Terminal()
-#print(term.home + term.black_on_orange + term.clear)
 print(term.home + term.clear)
 print(f"Terminal size: {term.width}x{term.height}")
 print("===============================================================================")
 print("===============================================================================")
-print(f"lft is looking for trouble on {host} for {netid}")
+print(f"lft is looking for trouble on {host} for {username}")
 print("===============================================================================")
 
-# ldapsearch (launch as task)
-person = ldap_plus([netid])
 p = person[1]
-if p[0]: print("    Name:", term.bold(p[0]))
-if p[9]: print("   NetID:", p[9])
+if p[9]:
+ if netid == username:
+   print("   NetID:", term.bold(p[9]))
+ else:
+   print(f"   NetID: {term.bold(p[9])} ({username} is alias)")
+if p[0]: print("    Name:", p[0])
 print("")
 if p[1]: print("    Dept:", p[1])
 if p[3]: print("Position:", p[3])
 
 # modification time of /home/<NetID>
 if Path(home).exists():
-  if True:
-    mtime = datetime.fromtimestamp(os.stat(home).st_mtime)
-    dt = datetime.today() - mtime
-    if dt.days == 0:
-      hours = dt.seconds // 3600
-      minutes = dt.seconds // 60
-      if hours > 1:
-        print(f"  Active: {hours} hours ago")
-      elif minutes > 1:
-        print(f"  Active: {minutes} minutes ago")
-      else:
-        print(f"  Active: {dt.seconds} seconds ago")
+  mtime = datetime.fromtimestamp(os.stat(home).st_mtime)
+  dt = datetime.today() - mtime
+  if dt.days == 0:
+    hours = dt.seconds // 3600
+    minutes = dt.seconds // 60
+    if hours > 1:
+      print(f"  Active: {hours} hours ago")
+    elif minutes > 1:
+      print(f"  Active: {minutes} minutes ago")
     else:
-      print(f"  Active: {dt.days} days ago")
+      print(f"  Active: {dt.seconds} seconds ago")
+  else:
+    if dt.days < 365:
+      print(f"  Active: {dt.days} days ago ({mtime.strftime('%-m/%-d')})")
+    else:
+      print(f"  Active: {dt.days} days ago ({mtime.strftime('%-m/%-d/%Y')})")
 else:
   print("  Active: N/A")
 print("")
@@ -155,16 +168,19 @@ def format_modules(module_lines):
     items = module_line.split()
     if len(items) > 1 and items[0] == 'module' and (items[1] == 'load' or items[1] == 'add'):
       for module in module_line.split()[2:]:
-        singles.append("module load " + module) 
+        if module.endswith('/64'): module = module[:module.index('/64')]
+        singles.append("module load " + module)
     else:
       singles.append(module_line)
   return singles
 
 # .bashrc
-divider('Environment', '')
+divider(term.bold('Environment'), '')
 aliases = 0
 exports = 0
-pythonpath=None
+pythonpath=False
+miniconda=False
+anaconda=False
 modules = []
 path = home + '/.bashrc'
 if Path(home).exists() and is_rx(home) and os.path.isfile(path):
@@ -185,16 +201,14 @@ if Path(home).exists() and is_rx(home) and os.path.isfile(path):
       if ('export' in line and not line.startswith('#')):
         exports += 1
       if ('pythonpath' in line and not line.startswith('#')):
-        pythonpath=line
-      # check anaconda3 or miniconda3 in .bashrc
+        pythonpath=True
       if line.strip().startswith('#'): continue
       if 'miniconda' in line.lower() and 'path' in line.lower():
-        print('miniconda')
+        miniconda = True
       if 'anaconda' in line.lower() and 'path' in line.lower():
-        print('anaconda')
+        anaconda = True
     print("   Number of aliases:", aliases)
     print("   Number of exports:", exports)
-    if pythonpath: print("\t ", pythonpath)
     if modules:
       for module in format_modules(modules):
         print(f"   {term.bold}{term.red}{module}{term.normal}")
@@ -232,7 +246,7 @@ if is_rx(home) and Path(dot_conda).exists():
     #print("~/.conda pkgs:")
     #print_columns(list(set([pkg.split('-')[0] for pkg in os.listdir(pkgs)])))
 
-divider('Python', '')
+divider(term.bold('Python'), '')
 dot_conda = home + '/.conda'
 if is_rx(home) and Path(dot_conda).exists():
   path = dot_conda + '/envs'
@@ -253,6 +267,15 @@ path = home + '/.condarc'
 if is_rx(home) and Path(path).exists():
   print(f"{term.bold}{term.red}~/.condarc{term.normal} was found")
 
+# .cache
+path = home + '/.cache'
+dot_cache = True if is_rx(home) and Path(path).exists() else False
+
+if pythonpath: print(f"{term.red}PYTHONPATH was set{term.normal}")
+if dot_cache: print("~/.cache: yes")
+if anaconda: print("anaconda: yes")
+if miniconda: print("miniconda: yes")
+
 # .local
 # pip install --user <package>
 path = home + '/.local'
@@ -270,14 +293,6 @@ if os.path.isdir(path):
 else:
   print(path, "does not exist")
 
-# PYTHONPATH
-
-# .cache
-path = home + '/.cache'
-if is_rx(home) and Path(path).exists():
-  #divider('~/.cache', '.cache was found')
-  pass
-
 # R
 path = home + '/R'
 if Path(path).exists():
@@ -287,7 +302,7 @@ if Path(path).exists():
     patterns = ['sf', 'dplyr', 'lubridate', 'tidyverse', 'tibble', 'ggplot2', 'caret', \
                 'Rmpi', 'doMPI', 'data.table']
     found = set([p for p in patterns for pkg in pkgs if p in pkg])
-    divider('R', '')
+    divider(' R', '')
     print("R pkgs:", ' '.join(found))
     if verbose: print_columns(pkgs)
  
@@ -314,7 +329,7 @@ if Path(path).exists():
     print(' '.join(versions_used))
 
 # filesystems
-divider('filesystems', '')
+divider(term.bold('Filesystems'), '')
 clusters = ['adroit', 'perseus', 'della', 'tiger', 'traverse']
 is_cluster = any([cluster in host for cluster in clusters])
 
@@ -357,7 +372,8 @@ for item in items:
       grps = ','.join(grps[:3]) + ',...'
     else:
       grps = ','.join(grps)
-    print(term.move_xy(2, 8) + "Groups: " + grps)
+    with term.location():
+      print(term.move_xy(2, 8) + "Groups: " + grps)
 
 # sponsor_report
 cmd = "sponsor_report " + netid
@@ -390,7 +406,8 @@ for line in lines:
     # Manager curt (Curtis W. Hillegas) has sponsored the following users
     sponsor_full_name = line.split('(')[1].split(')')[0]
     sponsor_full_name = remove_middle_initial(sponsor_full_name)
-    print(term.move_xy(1, 12) + f"Sponsor: {sponsor_full_name} ({sponsor})")
+    with term.location():
+      print(term.move_xy(1, 12) + f"Sponsor: {sponsor_full_name} ({sponsor})")
   if netid in line and 'has accounts on' in line:
     # jdh4 (Jonathan D. Halverson) has accounts on della, perseus, tiger, traverse
     accounts = line.split('has accounts')[-1].replace(',', '').split()[1:]
@@ -410,41 +427,42 @@ for user in tg_users:
   if user == netid + '\n':
     accounts.append("tigressdata")
 # print accounts
-print(term.move_xy(50, 6))
-for account in sorted(accounts):
-  pre = "*" if account in host else " "
-  print(term.move_x(50) + pre + account)
+with term.location(50, 7):
+  for account in sorted(accounts):
+    pre = "*" if account in host else " "
+    print(term.move_x(50) + pre + account)
 
-print(term.move_y(40))
+print("\n" + term.bold("Jobs"))
+print("=" * 80)
+
 # squeue
 if is_cluster:
   cmd = "squeue -u " + netid
   output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
   lines = output.stdout.decode("utf-8").split('\n')
   running = 0
-  queued = 0
+  pending = 0
   qosmax = 0
   reqnode = 0
   for line in lines:
     if (' R ' in line): running += 1
-    if (' PD ' in line): queued += 1
+    if (' PD ' in line): pending += 1
     if (' QOSMax' in line): qosmax += 1
     if ('ReqNodeNotAvail' in line): reqnode += 1
-  if (running or queued or qosmax or reqnode):
-    msg =  "Running: " + str(running) + "\n"
-    msg += "Queued: " + str(queued) + "\n"
-    msg += "QOSMax: " + str(qosmax) + "\n"
-    msg += "ReqNodeNotAvail: " + str(reqnode)
-    divider(f'squeue -u {netid}', msg)
+  if (running or pending or qosmax or reqnode):
+    #print('-' * 80)
+    print(f"squeue -u {netid} >> Running: {running}  Pending: {pending}  QOSMax+: {qosmax}  ReqNodeNotAvail: {reqnode}")
 
 # sacct
 start_stamp = datetime.fromtimestamp(time() - 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
 # sacct wants this format YYYY-MM-DD[THH:MM[:SS]]
-cmd = f"sacct -S {start_stamp} -u {netid} | egrep -v 'extern|batch|\.0 ' | tail -n 10 2>/dev/null"
+cmd = f"sacct -S {start_stamp} -u {netid} | egrep -v 'extern|batch|\.0 ' 2>/dev/null"
 output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
 lines = output.stdout.decode("utf-8").split('\n')
 if (len(lines) > 3):
-  divider(f'Active and recently completed jobs on {host}', '')
+  print(f'sacct -u {netid} on {host}', '')
+  print('-' * 80)
+  print(lines[0])
   if len(lines) > 6: lines = lines[-6:]
   print('\n'.join(lines))
 
@@ -469,6 +487,7 @@ if 0:
 # cd /home/netid
 # cat /home/netid/.bashrc
 # cat /home/netid/.bash_profile
+# if tiger in host or tigressdata: checkgpu -u 
 
 # ps aux | grep netid -> what are they running on the head node
 # lsof
