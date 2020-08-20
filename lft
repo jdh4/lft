@@ -9,6 +9,7 @@ sys.path.append('/scratch/gpfs/jdh4/gpustat') # to find dossier
 sys.path.append('/tiger/scratch/gpfs/jdh4/gpustat') # to find dossier from tigressdata
 import math
 import subprocess
+from pathlib import Path
 from datetime import datetime
 from time import time
 from socket import gethostname
@@ -19,6 +20,19 @@ import concurrent.futures
 term = Terminal()
 width = 80
 gutter = ' '
+
+class StringBox(list):
+  def __init__(self):
+    super().__init__()
+    self.width = 0
+    self.height = 0
+  def append(self, x):
+    super().append(x)
+    self.width = len(x) if len(x) > self.width else self.width
+    self.height += 1
+  def __setitem__(self, key, x):
+    super().__setitem__(key, x)
+    self.width = len(x) if len(x) > self.width else self.width
 
 def print_help():
   print("lft is looking for trouble. Example usage:")
@@ -33,11 +47,12 @@ def print_columns(items, red, max_chars=15, columns=5):
       idx = j + columns * i
       if idx < len(items):
         item = items[idx].strip()
-        if len(item) > max_chars - 2: item = item[:max_chars - 2] + '+'
+        # TODO make red before trim
+        if len(item) > max_chars - 1: item = item[:max_chars - 2] + '+ '
         if item in red:
-          s += term.bold + term.red + item + term.normal + ' ' * (max_chars - len(items[idx]))
+          s += term.bold + term.red + item + term.normal + ' ' * max(0, max_chars - len(items[idx]))
         else:
-          s += item + ' ' * (max_chars - len(items[idx]))
+          s += item + ' ' * max(0, max_chars - len(items[idx]))
     print(s)
   return None
 
@@ -74,13 +89,19 @@ with concurrent.futures.ThreadPoolExecutor() as executor:
 netid = person[1][9]
 # need to check if netid is legit before going forward
 
-from pathlib import Path
+# check for existence and permissions of home directory
+home_rx = False
 home = '/home/' + netid
 if Path(home).exists():
-  if not is_rx(home):
-    print(home, "is not accessible.")
+  home_exists = True
+  if is_rx(home):
+    home_rx = True
+  else:
+    home_rx = False
+    print(f"{home} is not accessible.")
 else:
-  print(home, "does not exist.")
+  home_exists = False
+  print(f"{home} does not exist.")
 
 host = gethostname().lower()
 
@@ -96,14 +117,15 @@ mach = {
 if (host not in mach): print("Warning: host not found.")
 host = mach[host]
 
-now = datetime.today().strftime('%-I:%M %p (%-m/%-d)')
 
 print(term.home + term.clear)
 #print(f"Terminal size: {term.width}x{term.height}")
-print("===============================================================================")
-print("===============================================================================")
-print(f"lft is looking for trouble on {host} for {username}           {now}")
-print("===============================================================================")
+message = f"{gutter}looking for trouble on {host} for {username}"
+now = datetime.today().strftime('%-I:%M %p (%b %-d)')
+num_spaces = width - len(message) - len(now) - len(gutter)
+print("=" * width)
+print(f"{message}{' ' * num_spaces}{now}")
+print("=" * width)
 
 p = person[1]
 if p[9]:
@@ -187,92 +209,126 @@ def remove_comments_and_white_space(lines):
   trans = str.maketrans('', '', ' \n\t\r')
   return ''.join(remove_comments).translate(trans)
 
-# .bashrc
-divider(f"{term.bold}Environment{term.normal} (cat /home/{netid}/.bashrc)", '')
-aliases = 0
-exports = 0
-source = 0
+def analyze_startup_script(flnm, default):
+  global pythonpath
+  global miniconda
+  global anaconda
+  global rlibs
+  global rlibsuser
+  aliases = 0
+  exports = 0
+  source = 0
+  modules = []
+  path = home + '/' + flnm
+  if os.path.isfile(path):
+    with open(path) as f:
+      lines = f.readlines()
+    startup_rm = remove_comments_and_white_space(lines)
+    default_rm = remove_comments_and_white_space(default)
+    if (startup_rm == default_rm):
+      print(f"{flnm}: default")
+    else:
+      for line in lines:
+        if line.strip().startswith('#'): continue
+        line = line.strip().lower() # lower causes problem with dirs with caps
+        if (line.startswith('module') and ('load' in line or 'add' in line) and \
+          not 'alias' in line):
+          modules.append(line)
+        # TODO remove comment checks
+        if ('alias' in line and not line.startswith('#')):
+          aliases += 1
+        if ('export' in line and not line.startswith('#')):
+          exports += 1
+        #if ('source' in line and not line.startswith('#')):
+        #  source += 1
+        if ('pythonpath' in line and not line.startswith('#')):
+          pythonpath=True
+        if 'miniconda' in line.lower() and 'path' in line.lower():
+          miniconda = True
+        if 'anaconda' in line.lower() and 'path' in line.lower():
+          anaconda = True
+        if 'r_libs=' in line.lower() and 'export' in line.lower():
+          rlibs = True
+        if 'r_libs_user' in line.lower() and 'export' in line.lower():
+          rlibsuser = True
+      #print(f"{flnm} >> alias:{aliases}  export:{exports}  source:{source}")
+      print(f"{flnm}: alias:{aliases}  export:{exports}")
+      if modules:
+        mods = format_modules(modules)
+        if verbose or len(mods) < 4:
+          for mod in mods:
+            print(f"   {term.bold}{term.red}{mod}{term.normal}")
+        else:
+          for mod in mods[:3]:
+            print(f"   {term.bold}{term.red}{mod}{term.normal}")
+          print(f"   {term.bold}{term.red}(plus {len(mods) - 3} more){term.normal}")
+  else:
+    print(f"{path} does not exist.")
+
+# .bashrc and .bash_profile
+#divider(f"{term.bold}Environment{term.normal} (cat /home/{netid}/.bashrc)", '')
+divider(f"{term.bold}Environment{term.normal}", '')
 pythonpath = False
 miniconda = False
 anaconda = False
-modules = []
-path = home + '/.bashrc'
-if Path(home).exists() and is_rx(home) and os.path.isfile(path):
-  with open(path) as f:
-    lines = f.readlines()
-  bashrc_rm = remove_comments_and_white_space(lines)
-  bashrc_default_rm = remove_comments_and_white_space(bashrc_default)
-  if (bashrc_rm == bashrc_default_rm):
-    print("~/.bashrc: default")
-  else:
-    print("~/.bashrc: custom")
-    for line in lines:
-      if line.strip().startswith('#'): continue
-      line = line.strip().lower() # lower causes problem with dirs with caps
-      if (line.startswith('module') and ('load' in line or 'add' in line) and \
-        not 'alias' in line):
-        modules.append(line)
-      if ('alias' in line and not line.startswith('#')):
-        aliases += 1
-      if ('export' in line and not line.startswith('#')):
-        exports += 1
-      if ('source' in line and not line.startswith('#')):
-        source += 1
-      if ('pythonpath' in line and not line.startswith('#')):
-        pythonpath=True
-      if 'miniconda' in line.lower() and 'path' in line.lower():
-        miniconda = True
-      if 'anaconda' in line.lower() and 'path' in line.lower():
-        anaconda = True
-    print("    alias:", aliases)
-    print("   export:", exports)
-    print("   source:", source)
-    if modules:
-      for module in format_modules(modules):
-        print(f"   {term.bold}{term.red}{module}{term.normal}")
-#TODO if home private then say that under Environment in output
-
-# bash_profile
-# TODO: examine this as like .bashrc for modules and aliases
-path = home + '/.bash_profile'
-if is_rx(home) and Path(path).exists():
-  with open(path) as f:
-    lines = f.readlines()
-  bash_profile_rm = remove_comments_and_white_space(lines)
-  bash_profile_default_rm = remove_comments_and_white_space(bash_profile_default)
-  if (bash_profile_rm == bash_profile_default_rm):
-    print("~/.bash_profile: default")
-  else:
-    print("~/.bash_profile: custom")
+rlibs = False
+rlibsuser = False
+if not home_exists:
+  print(f"{home} does not exist")
+elif home_exists and not home_rx:
+  print(f"{home} is private")
+else:
+  analyze_startup_script('.bashrc', bashrc_default)
+  analyze_startup_script('.bash_profile', bash_profile_default)
 
 # filesystems
-divider(term.bold('Filesystems'), '')
+def public_or_private(path):
+  if is_rx(path):
+    return f"{path}: public ({len(os.listdir(path))} items)"
+  else:
+    return f"{path}: private"
+
 clusters = ['adroit', 'perseus', 'della', 'tiger', 'traverse']
 is_cluster = any([cluster in host for cluster in clusters])
 
 if is_cluster: # why do it this way? to distinguish from tigressdata?
+  fs = StringBox()
+
   path = '/home/' + netid
   if os.path.isdir(path) and not is_rx(path):
-    print("           " + path + ": private") # TODO make red
+    fs.append(f"{path}: private")
+
   path = '/scratch/gpfs/' + netid
   if os.path.isdir(path):
-    if is_rx(path):
-      print("   " + path + ": public (" + str(len(os.listdir(path))), "items)")
-    else:
-      print("   " + path + ": private")
+    fs.append(public_or_private(path))
+
   path = '/tigress/' + netid
   if Path(path).exists():
-    if is_rx(path):
-      print("        " + path + ": public (" + str(len(os.listdir(path))), "items)")
-    else: 
-      print("        " + path + ": private")
+    fs.append(public_or_private(path))
+
   if ('della' in host or 'adroit' in host):
     path = '/scratch/network/' + netid
     if Path(path).exists():
-      if is_rx(path):
-        print(path + ": public (" + str(len(os.listdir(path))), "items)")
-      else:
-        print(path + ": private")
+      fs.append(public_or_private(path))
+
+# align filesystems on colon
+def align_on_colon(s):
+  max_idx = max([line.index(':') for line in s])
+  for i in range(fs.height):
+    fs[i] = " " * (max_idx - fs[i].index(':')) + fs[i]
+  return fs
+fs = align_on_colon(fs)
+if not home_exists or not home_rx: print("\n" * fs.height)
+# print filesystems
+with term.location():
+  print(term.move_xy(width - fs.width - len(gutter), 12) + term.bold('Filesystems'))
+  for i in range(fs.height):
+    xc = width - fs.width - len(gutter)
+    yc = 14 + i
+    if 'home' in fs[i]:
+      print(term.move_xy(xc, yc) + term.red + term.bold + fs[i] + term.normal)
+    else:
+      print(term.move_xy(xc, yc) + fs[i])
 
 # id
 cmd = "id " + netid
@@ -289,9 +345,10 @@ for item in items:
     else:
       grps = ','.join(grps)
     with term.location():
-      print(term.move_xy(2, 8) + "Groups: " + grps)
+      print(term.move_xy(2, 6) + "Groups: " + grps)
 
 # sponsor_report
+# TODO luet does not have account on tiger
 cmd = "sponsor_report " + netid
 output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
 lines = output.stdout.decode("utf-8").split('\n')
@@ -323,11 +380,12 @@ for line in lines:
     sponsor_full_name = line.split('(')[1].split(')')[0]
     sponsor_full_name = remove_middle_initial(sponsor_full_name)
     with term.location():
-      print(term.move_xy(1, 12) + f"Sponsor: {sponsor_full_name} ({sponsor})")
+      print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
   if netid in line and 'has accounts on' in line:
     # jdh4 (Jonathan D. Halverson) has accounts on della, perseus, tiger, traverse
     accounts = line.split('has accounts')[-1].replace(',', '').split()[1:]
     if 'mcmillan' in accounts: accounts.remove('mcmillan')
+    if 'eddy' in accounts: accounts.remove('eddy')
 
 # check for account adroit and tigressdata (use threading while sponsorreport runs)
 path = '/tigress/jdh4/python-devel/lft'
@@ -343,7 +401,7 @@ for user in tg_users:
   if user == netid + '\n':
     accounts.append("tigressdata")
 # print accounts
-with term.location(50, 7):
+with term.location(50, 5):
   for account in sorted(accounts):
     pre = "*" if account in host else " "
     print(term.move_x(50) + pre + account)
@@ -369,9 +427,15 @@ if is_rx(home) and Path(dot_conda).exists():
     #print_columns(list(set([pkg.split('-')[0] for pkg in os.listdir(pkgs)])))
 
 # conda environments
-patterns = ['mpi4py', 'mpich', 'cudatoolkit', 'keras', 'tensorflow', 'numpy', \
-            'scipy', 'matplotlib', 'pandas', 'pytorch', 'geopandas']
-divider(term.bold('Python') + " (~/.conda environments)", '')
+# TODO tensorflow-gpu gets truncated by hyphen
+# TODO is the package called fenics or something else
+# TODO with verbose show certain libs: /home/jdh4/.conda/envs/tf2-gpu/lib
+parallel = ['mpi4py', 'mpich', 'intel-openmp', 'dask']
+gpu      = ['cudatoolkit', 'cudnn', 'cupy']
+defining = ['fenics', 'torch', 'geopandas', 'tensorflow', 'torch', 'pystan']
+patterns = parallel + gpu + defining
+
+divider(term.bold('Python'), '')
 to_remove = set(['__pycache__', 'six', 'pasta', 'pip', 'wheel', 'setuptools', 'pkgconfig', '_pytest'])
 dot_conda = home + '/.conda'
 if is_rx(home) and Path(dot_conda).exists():
@@ -381,11 +445,12 @@ if is_rx(home) and Path(dot_conda).exists():
     if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
     for env in envs:
       mtime = datetime.fromtimestamp(os.stat(dot_conda + f'/envs/{env}').st_mtime)
-      print("\t", term.bold(env), mtime.strftime(' (last modified %-m/%-d/%Y)'))
+      if not verbose: print(gutter, '~/.conda/envs/' + term.bold(env), mtime.strftime(' (%-m/%-d/%Y)'))
       success = False
       for version in versions:
         path = f'{home}/.conda/envs/{env}/lib/python{version}/site-packages'
         if os.path.isdir(path) and is_rx(path) and verbose:
+          if verbose: print(f"{gutter}~/.conda/envs/{term.bold}{env}{term.normal}/lib/python{version}/site-packages {mtime.strftime(' (%-m/%-d/%y)')}")
           pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
           pkgs = list(set([pkg.split('-')[0] for pkg in pkgs]) - to_remove)
           print_columns(pkgs, patterns)
@@ -396,19 +461,20 @@ if is_rx(home) and Path(dot_conda).exists():
 # .local
 # pip install --user <package>
 path = home + '/.local'
-if os.path.isdir(path):
-  if is_rx(path):
-    for version in versions:
-      path = home + '/.local/lib/python' + version + '/site-packages'
-      if os.path.isdir(path) and is_rx(path):
-        pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
-        print("== --user ==", path, "==")
-        if pkgs: print_columns([pkg.split('-')[0] for pkg in pkgs], patterns)
+if home_exists and home_rx and Path(path).exists() and is_rx(path):
+  if os.path.isdir(path):
+    if is_rx(path):
+      for version in versions:
+        path = home + '/.local/lib/python' + version + '/site-packages'
+        if os.path.isdir(path) and is_rx(path):
+          pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
+          print(path)
+          if pkgs and verbose: print_columns([pkg.split('-')[0] for pkg in pkgs], patterns)
   else:
-    print(path, "is not accessible")
+    print(path, "is private")
 else:
   print(path, "does not exist")
-#print('-' * width)
+print('-' * width)
 
 # .condarc
 path = home + '/.condarc'
@@ -419,19 +485,21 @@ if is_rx(home) and Path(path).exists():
 path = home + '/.cache'
 dot_cache = True if is_rx(home) and Path(path).exists() else False
 
-if pythonpath: print(f"{term.red}PYTHONPATH was set{term.normal}")
+if pythonpath: print(f"PYTHONPATH was set")
 if dot_cache: print("~/.cache: yes")
 if anaconda: print("anaconda: yes")
 if miniconda: print("miniconda: yes")
 
 # R
+parallel = ['furrr', 'Rmpi', 'doMPI', 'caret']
+trouble = ['sf', 'rstan']
+patterns = parallel + trouble
+
 path = home + '/R'
 if is_rx(home) and Path(path).exists():
   path = home + '/R/x86_64-redhat-linux-gnu-library/3.6' #TODO: 4.0
   if Path(path).exists() and is_rx(path):
     pkgs = os.listdir(path)
-    patterns = ['sf', 'caret', \
-                'furrr', 'Rmpi', 'doMPI']
     found = set([p for p in patterns for pkg in pkgs if p in pkg])
     divider(term.bold('R') + " (~/R/x86_64-redhat-linux-gnu-library/)", '')
     if verbose: print_columns(pkgs, patterns, max_chars=13, columns=6)
@@ -440,9 +508,9 @@ if is_rx(home) and Path(path).exists():
 makevars = home + '/.R/Makevars'
 if os.path.isfile(makevars):
   print(makevars, "exists")
-#TODO see luet on della which is private
-if os.path.isfile(home + '/.bbashrc'):
-  print("exists")
+if rlibs: print("R_LIBS was set")
+if rlibsuser: print("R_LIBS_USER was set")
+
 #print(os.path.isfile(home + '/.bbashrc')) # gives false for luet
 #print(os.path.isfile(home + '/.bashrc'))  # gives false for luet
 # need to figure out when to use Path, os.path. and is_rx
