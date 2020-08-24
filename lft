@@ -263,7 +263,7 @@ def analyze_startup_script(flnm, default):
             print(f"   {term.bold}{term.red}{mod}{term.normal}")
           print(f"   {term.bold}{term.red}(plus {len(mods) - 3} more){term.normal}")
   else:
-    print(f"{path} does not exist.")
+    print(f"{flnm}: does not exist")
 
 # .bashrc and .bash_profile
 #divider(f"{term.bold}Environment{term.normal} (cat /home/{netid}/.bashrc)", '')
@@ -430,9 +430,9 @@ if is_rx(home) and Path(dot_conda).exists():
 # TODO tensorflow-gpu gets truncated by hyphen
 # TODO is the package called fenics or something else
 # TODO with verbose show certain libs: /home/jdh4/.conda/envs/tf2-gpu/lib
-parallel = ['mpi4py', 'mpich', 'intel-openmp', 'dask']
+parallel = ['mpi4py', 'mpich', 'intel-openmp', 'dask', 'numba']
 gpu      = ['cudatoolkit', 'cudnn', 'cupy']
-defining = ['fenics', 'torch', 'geopandas', 'tensorflow', 'torch', 'pystan']
+defining = ['fenics', 'geopandas', 'tensorflow', 'torch', 'pystan']
 patterns = parallel + gpu + defining
 
 divider(term.bold('Python'), '')
@@ -452,7 +452,7 @@ if is_rx(home) and Path(dot_conda).exists():
         if os.path.isdir(path) and is_rx(path) and verbose:
           if verbose: print(f"{gutter}~/.conda/envs/{term.bold}{env}{term.normal}/lib/python{version}/site-packages {mtime.strftime(' (%-m/%-d/%y)')}")
           pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
-          pkgs = list(set([pkg.split('-')[0] for pkg in pkgs]) - to_remove)
+          pkgs = list(set([pkg.split('-')[0].lower() for pkg in pkgs]) - to_remove)
           print_columns(pkgs, patterns)
           print('-' * width)
           success = True
