@@ -407,31 +407,14 @@ with term.location(50, 5):
     print(term.move_x(50) + pre + account)
 
 # .conda
-versions = ['2.7', '3.6', '3.7', '3.8']
-#divider('Python', '')
-dot_conda = home + '/.conda'
-if is_rx(home) and Path(dot_conda).exists():
-  envs_path = dot_conda + '/envs'
-  if Path(envs_path).exists():
-    envs = os.listdir(envs_path)
-    if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
-    #print("~/.conda envs:")
-    for env in envs:
-      #print("\t", env)
-      pass
-  #pkgs = dot_conda + '/pkgs'
-  #if Path(pkgs).exists():
-    #found = set([p for p in patterns for pkg in os.listdir(pkgs) if p in pkg])
-    #print("~/.conda pkgs:", ' '.join(found))
-    #print("~/.conda pkgs:")
-    #print_columns(list(set([pkg.split('-')[0] for pkg in os.listdir(pkgs)])))
+versions = ['2.6', '2.7', '3.6', '3.7', '3.8']
 
 # conda environments
 # TODO tensorflow-gpu gets truncated by hyphen
 # TODO is the package called fenics or something else
 # TODO with verbose show certain libs: /home/jdh4/.conda/envs/tf2-gpu/lib
-parallel = ['mpi4py', 'mpich', 'intel-openmp', 'dask', 'numba']
-gpu      = ['cudatoolkit', 'cudnn', 'cupy']
+parallel = ['mpi4py', 'mpich', 'intel-openmp', 'dask', 'joblib']
+gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba']
 defining = ['fenics', 'geopandas', 'tensorflow', 'torch', 'pystan']
 patterns = parallel + gpu + defining
 
@@ -458,18 +441,22 @@ if is_rx(home) and Path(dot_conda).exists():
           success = True
       if not success and verbose: print("Packages are private")
 
-# .local
-# pip install --user <package>
+# .local (pip install --user <package>)
 path = home + '/.local'
 if home_exists and home_rx and Path(path).exists() and is_rx(path):
   if os.path.isdir(path):
     if is_rx(path):
       for version in versions:
-        path = home + '/.local/lib/python' + version + '/site-packages'
-        if os.path.isdir(path) and is_rx(path):
-          pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
-          print(path)
-          if pkgs and verbose: print_columns([pkg.split('-')[0] for pkg in pkgs], patterns)
+        path = f"{home}/.local/lib/python{version}/site-packages"
+        if Path(path).exists():
+          if is_rx(path):
+            print(path)
+            pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
+            if pkgs and verbose:
+              print(path)
+              print_columns([pkg.split('-')[0] for pkg in pkgs], patterns)
+          else:
+            print(f"{path} is private")
   else:
     print(path, "is private")
 else:
@@ -521,7 +508,7 @@ path = home + '/.julia/packages'
 if Path(path).exists():
   if is_rx(path):
     pkgs = os.listdir(path)
-    if verbose: divider('julia', '')
+    if pkgs: divider('julia', '')
     if verbose: print_columns(pkgs, [])
 
 # ~/.matlab
@@ -564,8 +551,25 @@ if is_cluster:
     #print('-' * width)
     print(f"squeue -u {netid} >> Running: {running}  Pending: {pending}  QOSMax+: {qosmax}  ReqNodeNotAvail: {reqnode}")
 
+# sshare
+cmd = f"sshare -l -u {netid}"
+output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
+lines = output.stdout.decode("utf-8").split('\n')
+for i, line in enumerate(lines):
+  if ' ' + netid + ' ' in line and i != 0:
+    fairshare = f"{float(line.split()[7]):.2f}"
+    group = lines[i - 1].split()[0]
+    normShares = float(lines[i - 1].split()[2])
+    normUsage =  float(lines[i - 1].split()[4])
+    if normShares == 0:
+      ratio = "100%"
+    else:
+      ratio = int(round(100 * normUsage / normShares, -1))
+      ratio = f"{ratio}%"
+    print(fairshare, ratio, group)
+    # red if extreme numbers
+
 # sacct
-# TODO: add fairshare value
 start_stamp = datetime.fromtimestamp(time() - 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
 # sacct wants this format YYYY-MM-DD[THH:MM[:SS]]
 cmd = f"sacct -S {start_stamp} -u {netid} | egrep -v 'extern|batch|\.0 ' 2>/dev/null"
@@ -639,9 +643,9 @@ def previous_and_next_downtime_dates():
     tues = [second_tues.strftime(fmt), next_second_tues.strftime(fmt)]
     # TODO: make bold red
     if (nxt.days < 4):
-      print(f"{tues[0]} ({prv.days} days ago) --- downtime --> ({term.red}{nxt.days} days away{term.normal}) {tues[1]}")
+      print(f"{tues[0]} ({prv.days} days ago) --- Downtime --> ({term.red}{nxt.days} days away{term.normal}) {tues[1]}")
     else:
-      print(f"{tues[0]} ({prv.days} days ago) --- downtime --> ({nxt.days} days away) {tues[1]}")
+      print(f"{tues[0]} ({prv.days} days ago) --- Downtime --> ({nxt.days} days away) {tues[1]}")
   else:
     # downtime in current month is upper bound so get downtime last month
     month -= 1
@@ -653,9 +657,9 @@ def previous_and_next_downtime_dates():
     prv = today - prev_second_tues
     tues = [prev_second_tues.strftime(fmt), second_tues.strftime(fmt)]
     if (nxt.days < 4):
-      print(f"{tues[0]} ({prv.days} days ago) --- downtime --> ({term.red}{nxt.days} days away{term.normal}) {tues[1]}")
+      print(f"{tues[0]} ({prv.days} days ago) --- Downtime --> ({term.red}{nxt.days} days away{term.normal}) {tues[1]}")
     else:
-      print(f"{tues[0]} ({prv.days} days ago) --- downtime --> ({nxt.days} days away) {tues[1]}")
+      print(f"{tues[0]} ({prv.days} days ago) --- Downtime --> ({nxt.days} days away) {tues[1]}")
   return None
 
 _ = previous_and_next_downtime_dates()

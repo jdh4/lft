@@ -1,5 +1,3 @@
-#!/usr/licensed/anaconda3/2020.7/bin/python
-
 # The output of "getent passwd" is combined and filtered for the
 # different clusters. Adroit is handled as a special case since
 # it does not contain name_sponsor info for most users.
