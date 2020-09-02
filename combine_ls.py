@@ -2,20 +2,18 @@
 # and written to file
 
 import pandas as pd
-#pd.set_option('display.max_rows', 5000)
 
-files = ['adroit_ls.txt', 'della_ls.txt', 'perseus_ls.txt', \
-         'tiger_ls.txt', 'tigressdata_ls.txt', 'traverse_ls.txt']
+clusters = ['adroit_ls.txt', 'della_ls.txt', 'perseus_ls.txt', \
+            'tiger_ls.txt', 'tigressdata_ls.txt', 'traverse_ls.txt']
 
-df = pd.read_csv(files[0], header=None)
+df = pd.read_csv(clusters[0], header=None)
 df.columns = ['netid']
 df['adroit'] = 'adroit'
-for f in files[1:]:
-  tmp = pd.read_csv(f, header=None)
+for cluster in clusters[1:]:
+  tmp = pd.read_csv(cluster, header=None)
   tmp.columns = ['netid']
-  host = f.split('_')[0]
+  host = cluster.split('_')[0]
   tmp[host] = host
-  #df = df.append(tmp)
   df = pd.merge(df, tmp, on='netid', how='outer')
 
 df = df.sort_values(by='netid', ascending=True)
