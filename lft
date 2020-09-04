@@ -1,6 +1,6 @@
 #!/scratch/gpfs/jdh4/blessed-env/bin/python
 
-# post issues at https://github.com/jdh4/lft
+# post issues to https://github.com/jdh4/lft
 # or write to halverson@princeton.edu
 
 import os
@@ -331,21 +331,34 @@ with term.location():
       print(term.move_xy(xc, yc) + fs[i])
 
 # id
-cmd = "id " + netid
+cmd = "groups " + netid
 output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
-lines = output.stdout.decode("utf-8").split('\n')[0]
-items = lines.split()
-# uid=150340(jdh4) gid=20121(cses) groups=20121(cses),1001(g03)
-for item in items:
-  if 'gid=' in item: gid = item[item.index('(') + 1:item.index(')')]
-  if 'groups=' in item:
-    grps = [s[s.index('(') + 1:s.index(')')] for s in item.split(',')]
-    if len(grps) > 3:
-      grps = ','.join(grps[:3]) + ',...'
-    else:
-      grps = ','.join(grps)
-    with term.location():
-      print(term.move_xy(2, 6) + "Groups: " + grps)
+lines = output.stdout.decode("utf-8").split('\n')
+# jdh4 : cses quijote
+grps = lines[0].split(':')[-1].split()
+if len(grps) > 3:
+  grps = ', '.join(grps[:3]) + ', ...'
+else:
+  grps = ', '.join(grps)
+with term.location():
+  print(term.move_xy(2, 6) + "Groups: " + grps)
+
+# home
+import csv
+flnm = "/tigress/jdh4/python-devel/lft/combined_ls.csv"
+with open(flnm, mode='r') as csv_file:
+  csv_reader = csv.DictReader(csv_file)
+  next(csv_reader)
+  hdirs = []
+  for row in csv_reader:
+    if row["netid"] == netid:
+      hdirs = [hdir for hdir in list(row.values())[1:] if hdir != '']
+      break
+if hdirs:
+  with term.location(67, 5):
+    for hdir in sorted(hdirs):
+      pre = "*" if hdir in host else " "
+      print(term.move_x(67) + pre + hdir)
 
 # sponsor_report
 # TODO luet does not have account on tiger
@@ -421,7 +434,7 @@ patterns = parallel + gpu + defining
 divider(term.bold('Python'), '')
 to_remove = set(['__pycache__', 'six', 'pasta', 'pip', 'wheel', 'setuptools', 'pkgconfig', '_pytest'])
 dot_conda = home + '/.conda'
-if is_rx(home) and Path(dot_conda).exists():
+if home_exists and home_rx and Path(dot_conda).exists():
   path = dot_conda + '/envs'
   if Path(path).exists():
     envs = os.listdir(path)
@@ -448,20 +461,22 @@ if home_exists and home_rx and Path(path).exists() and is_rx(path):
     if is_rx(path):
       for version in versions:
         path = f"{home}/.local/lib/python{version}/site-packages"
-        if Path(path).exists():
+        if os.path.isdir(path):
           if is_rx(path):
-            print(path)
             pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
             if pkgs and verbose:
               print(path)
+              # TODO: remove duplicates
               print_columns([pkg.split('-')[0] for pkg in pkgs], patterns)
+            print('-' * width)
           else:
             print(f"{path} is private")
+            print('-' * width)
   else:
     print(path, "is private")
 else:
   print(path, "does not exist")
-print('-' * width)
+#print('-' * width)
 
 # .condarc
 path = home + '/.condarc'
@@ -483,7 +498,7 @@ trouble = ['sf', 'rstan']
 patterns = parallel + trouble
 
 path = home + '/R'
-if is_rx(home) and Path(path).exists():
+if home_exists and home_rx and Path(path).exists():
   path = home + '/R/x86_64-redhat-linux-gnu-library/3.6' #TODO: 4.0
   if Path(path).exists() and is_rx(path):
     pkgs = os.listdir(path)
@@ -505,7 +520,7 @@ if rlibsuser: print("R_LIBS_USER was set")
 
 # ~/.julia
 path = home + '/.julia/packages'
-if Path(path).exists():
+if home_exists and home_rx and Path(path).exists():
   if is_rx(path):
     pkgs = os.listdir(path)
     if pkgs: divider('julia', '')
@@ -513,7 +528,7 @@ if Path(path).exists():
 
 # ~/.matlab
 path = home + '/.matlab'
-if Path(path).exists():
+if home_exists and home_rx and Path(path).exists():
   if is_rx(path):
     divider(term.bold('MATLAB'), '')
     # versions used via slurm or interactively
@@ -524,7 +539,7 @@ if Path(path).exists():
 
 # ondemand
 path = home + '/ondemand'
-if Path(path).exists():
+if home_exists and home_rx and Path(path).exists():
   if is_rx(path):
     divider('ondemand', '')
     if Path(path + '/data/sys/dashboard/batch_connect/sys/rstudio_server').exists():
@@ -560,7 +575,7 @@ for i, line in enumerate(lines):
     fairshare = f"{float(line.split()[7]):.2f}"
     group = lines[i - 1].split()[0]
     normShares = float(lines[i - 1].split()[2])
-    normUsage =  float(lines[i - 1].split()[4])
+    normUsage  = float(lines[i - 1].split()[4])
     if normShares == 0:
       ratio = "100%"
     else:
@@ -582,6 +597,10 @@ if (len(lines) > 3):
   if len(lines) > 6: lines = lines[-6:]
   print('\n'.join(lines))
   # TODO column labels can display twice and "No jobs in last 24 hours"
+
+if verbose:
+  pass
+  # scontrol show reservation
 
 # size of /home
 if verbose and 0:
