@@ -7,6 +7,15 @@ This command crawls the /home directory of a specified user and reports on their
 
 ## Installation
 
+Add these lines to .condarc:
+
+```
+envs_dirs:
+ - /scratch/gpfs/jdh4
+```
+
+Then run these commands:
+
 ```
 $ module load anaconda3
 $ conda create --name blessed-env --channel conda-forge blessed -y
