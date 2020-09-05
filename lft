@@ -1,4 +1,4 @@
-#!/scratch/gpfs/jdh4/blessed-env/bin/python
+#!/scratch/gpfs/jdh4/blessed-env/bin/python -u
 
 # post issues to https://github.com/jdh4/lft
 # or write to halverson@princeton.edu
@@ -17,6 +17,7 @@ from dossier import ldap_plus
 from blessed import Terminal
 import concurrent.futures
 
+# terminal preferences
 term = Terminal()
 width = 80
 gutter = ' '
@@ -34,12 +35,34 @@ class StringBox(list):
     super().__setitem__(key, x)
     self.width = len(x) if len(x) > self.width else self.width
 
-def print_help():
-  print("lft is looking for trouble. Example usage:")
-  print("     $ lft aturing")
-
-def print_columns(items, red, max_chars=15, columns=5):
+def print_columns(items, language, max_chars=15, columns=5):
+  if language.lower() == "python":
+    parallel = ['mpi4py', 'mpich', 'intel-openmp', 'dask', 'joblib']
+    gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba']
+    green    = ['fenics', 'geopandas', 'tensorflow', 'tensorflow-gpu', 'torch', 'pystan']
+    red      = parallel + gpu
+  elif language.lower() == "r":
+    parallel = ['furrr', 'Rmpi', 'doMPI', 'caret']
+    trouble = ['sf', 'rstan']
+    green = []
+    red = parallel + trouble
+  elif language.lower() == "julia":
+    green = []
+    red = []
+  else:
+    green = []
+    red = []
+ 
+  clr = []
   items.sort()
+  for item in items:
+    if item in green:
+      clr.append(f"{term.bold}{term.green}")
+    elif item in red:
+      clr.append(f"{term.bold}{term.red}")
+    else:
+      clr.append("")
+
   rows = math.ceil(len(items) / columns)
   for i in range(rows):
     s = gutter
@@ -47,12 +70,8 @@ def print_columns(items, red, max_chars=15, columns=5):
       idx = j + columns * i
       if idx < len(items):
         item = items[idx].strip()
-        # TODO make red before trim
         if len(item) > max_chars - 1: item = item[:max_chars - 2] + '+ '
-        if item in red:
-          s += term.bold + term.red + item + term.normal + ' ' * max(0, max_chars - len(items[idx]))
-        else:
-          s += item + ' ' * max(0, max_chars - len(items[idx]))
+        s += clr[idx] + item + term.normal + ' ' * max(0, max_chars - len(items[idx]))
     print(s)
   return None
 
@@ -66,17 +85,30 @@ def divider(title, msg):
   print("=" * width)
   if (msg != ''): print(msg)
 
-if ('-h' in ''.join(sys.argv) or '--help' in ''.join(sys.argv)):
+######################################
+## evaluate command-line parameters ##
+######################################
+def print_help():
+  print("")
+  print("lft is looking for trouble. Example usage:")
+  print("     $ lft aturing")
+  print("")
+  print("Options:")
+  print("     -h  Show this help menu")
+  print("     -v  Produce verbose output")
+  print("     -d  Compute the size of /home using du -sh")
+  print("")
+  sys.exit(0)
+
+if (len(sys.argv) > 4):
+  print("")
+  print("ERROR: Wrong number of command-line parameters.")
   print_help()
-  sys.exit(0)
+if ('-h' in sys.argv or '--help' in sys.argv):
+  print_help()
+verbose = True if ('-v' in sys.argv) else False
+disk    = True if ('-d' in sys.argv) else False
 
-verbose = False
-if ('-v' in ''.join(sys.argv) or '--verbose' in ''.join(sys.argv)):
-  verbose = True
-
-if (len(sys.argv) > 3):
-  print("Wrong number of command-line parameters. Example usage: $ lft aturing -v")
-  sys.exit(0)
 
 def get_user_info(x):
   return ldap_plus([x])
@@ -104,9 +136,7 @@ else:
   print(f"{home} does not exist.")
 
 host = gethostname().lower()
-
 mach = {
-'tiger.princeton.edu':'tiger',
 'tigercpu.princeton.edu':'tiger',
 'tigergpu.princeton.edu':'tiger',
 'della5.princeton.edu':'della',
@@ -114,7 +144,7 @@ mach = {
 'traverse.princeton.edu':'traverse',
 'adroit4':'adroit',
 'tigressdata2.princeton.edu':'tigressdata'}
-if (host not in mach): print("Warning: host not found.")
+if (host not in mach): print("WARNING: host not found.")
 host = mach[host]
 
 
@@ -330,7 +360,7 @@ with term.location():
     else:
       print(term.move_xy(xc, yc) + fs[i])
 
-# id
+# groups
 cmd = "groups " + netid
 output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
 lines = output.stdout.decode("utf-8").split('\n')
@@ -345,6 +375,7 @@ with term.location():
 
 # home
 import csv
+# TODO different path for adroit and tigressdata
 flnm = "/tigress/jdh4/python-devel/lft/combined_ls.csv"
 with open(flnm, mode='r') as csv_file:
   csv_reader = csv.DictReader(csv_file)
@@ -355,10 +386,11 @@ with open(flnm, mode='r') as csv_file:
       hdirs = [hdir for hdir in list(row.values())[1:] if hdir != '']
       break
 if hdirs:
-  with term.location(67, 5):
+  with term.location(65, 4):
+    print("/home")
     for hdir in sorted(hdirs):
       pre = "*" if hdir in host else " "
-      print(term.move_x(67) + pre + hdir)
+      print(term.move_x(66) + pre + hdir)
 
 # sponsor_report
 # TODO luet does not have account on tiger
@@ -419,40 +451,51 @@ with term.location(50, 5):
     pre = "*" if account in host else " "
     print(term.move_x(50) + pre + account)
 
+def clean_python_packages(pkgs):
+  noshow = ['lib', 'bin', '__pycache__', 'six', 'pasta', 'pip', 'wheel', \
+            'setuptools', 'pkgconfig', '_pytest']
+  pkgs_cleaned = []
+  for pkg in pkgs:
+    parts = pkg.split('-')
+    if len(parts) > 1 and parts[1][0].isalpha():
+      pkg_cleaned = '-'.join([parts[0], parts[1]])
+    else:
+      pkg_cleaned = parts[0]
+    pkgs_cleaned.append(pkg_cleaned)
+  return list(set(pkgs_cleaned) - set(noshow))
+
 # .conda
 versions = ['2.6', '2.7', '3.6', '3.7', '3.8']
 
 # conda environments
-# TODO tensorflow-gpu gets truncated by hyphen
 # TODO is the package called fenics or something else
 # TODO with verbose show certain libs: /home/jdh4/.conda/envs/tf2-gpu/lib
-parallel = ['mpi4py', 'mpich', 'intel-openmp', 'dask', 'joblib']
-gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba']
-defining = ['fenics', 'geopandas', 'tensorflow', 'torch', 'pystan']
-patterns = parallel + gpu + defining
+# TODO python routines below are not symmetric and cases are weird
 
 divider(term.bold('Python'), '')
-to_remove = set(['__pycache__', 'six', 'pasta', 'pip', 'wheel', 'setuptools', 'pkgconfig', '_pytest'])
 dot_conda = home + '/.conda'
-if home_exists and home_rx and Path(dot_conda).exists():
+if home_exists and home_rx and Path(dot_conda).exists() and is_rx(dot_conda):
   path = dot_conda + '/envs'
   if Path(path).exists():
     envs = os.listdir(path)
     if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
     for env in envs:
       mtime = datetime.fromtimestamp(os.stat(dot_conda + f'/envs/{env}').st_mtime)
-      if not verbose: print(gutter, '~/.conda/envs/' + term.bold(env), mtime.strftime(' (%-m/%-d/%Y)'))
-      success = False
-      for version in versions:
-        path = f'{home}/.conda/envs/{env}/lib/python{version}/site-packages'
-        if os.path.isdir(path) and is_rx(path) and verbose:
-          if verbose: print(f"{gutter}~/.conda/envs/{term.bold}{env}{term.normal}/lib/python{version}/site-packages {mtime.strftime(' (%-m/%-d/%y)')}")
-          pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
-          pkgs = list(set([pkg.split('-')[0].lower() for pkg in pkgs]) - to_remove)
-          print_columns(pkgs, patterns)
-          print('-' * width)
-          success = True
-      if not success and verbose: print("Packages are private")
+      if not verbose:
+        print(gutter, '~/.conda/envs/' + term.bold(env), mtime.strftime(' (%-m/%-d/%Y)'))
+      else:
+        success = False
+        for version in versions:
+          path = f'{home}/.conda/envs/{env}/lib/python{version}/site-packages'
+          if os.path.isdir(path) and is_rx(path) and verbose:
+            print(f"    {gutter}~/.conda/envs/{term.bold}{env}{term.normal}/lib/python"
+                  f"{version}/site-packages {mtime.strftime(' (%-m/%-d/%y)')}")
+            pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
+            pkgs = clean_python_packages(pkgs)
+            print_columns(pkgs, "python")
+            success = True
+            print('-' * width)
+        if not success: print("Packages are private")
 
 # .local (pip install --user <package>)
 path = home + '/.local'
@@ -461,17 +504,15 @@ if home_exists and home_rx and Path(path).exists() and is_rx(path):
     if is_rx(path):
       for version in versions:
         path = f"{home}/.local/lib/python{version}/site-packages"
-        if os.path.isdir(path):
-          if is_rx(path):
-            pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
-            if pkgs and verbose:
-              print(path)
-              # TODO: remove duplicates
-              print_columns([pkg.split('-')[0] for pkg in pkgs], patterns)
-            print('-' * width)
-          else:
-            print(f"{path} is private")
-            print('-' * width)
+        if os.path.isdir(path) and is_rx(path) and verbose:
+          print(path)
+          pkgs = [pkg for pkg in os.listdir(path) if os.path.isdir(path + '/' + pkg)]
+          pkgs = clean_python_packages(pkgs)
+          print_columns(pkgs, "python")
+          print('-' * width)
+        else:
+          print(f"{path} is private")
+          print('-' * width)
   else:
     print(path, "is private")
 else:
@@ -480,31 +521,39 @@ else:
 
 # .condarc
 path = home + '/.condarc'
-if is_rx(home) and Path(path).exists():
+if home_exists and home_rx and Path(path).exists():
   print(f"{term.bold}{term.red}~/.condarc{term.normal} was found")
 
 # .cache
 path = home + '/.cache'
-dot_cache = True if is_rx(home) and Path(path).exists() else False
+dot_cache = True if home_exists and home_rx and Path(path).exists() else False
 
 if pythonpath: print(f"PYTHONPATH was set")
 if dot_cache: print("~/.cache: yes")
 if anaconda: print("anaconda: yes")
 if miniconda: print("miniconda: yes")
 
-# R
-parallel = ['furrr', 'Rmpi', 'doMPI', 'caret']
-trouble = ['sf', 'rstan']
-patterns = parallel + trouble
+def clean_r_packages(pkgs):
+  noshow = []
+  pkgs_cleaned = []
+  for pkg in pkgs:
+    parts = pkg.split('-')
+    if len(parts) > 1 and parts[1][0].isalpha():
+      pkg_cleaned = '-'.join([parts[0], parts[1]])
+    else:
+      pkg_cleaned = parts[0]
+    pkgs_cleaned.append(pkg_cleaned)
+  return list(set(pkgs_cleaned) - set(noshow))
 
+# R
 path = home + '/R'
 if home_exists and home_rx and Path(path).exists():
   path = home + '/R/x86_64-redhat-linux-gnu-library/3.6' #TODO: 4.0
   if Path(path).exists() and is_rx(path):
     pkgs = os.listdir(path)
-    found = set([p for p in patterns for pkg in pkgs if p in pkg])
+    pkgs = clean_r_packages(pkgs)
     divider(term.bold('R') + " (~/R/x86_64-redhat-linux-gnu-library/)", '')
-    if verbose: print_columns(pkgs, patterns, max_chars=13, columns=6)
+    if verbose: print_columns(pkgs, "R", max_chars=13, columns=6)
  
 # Makevars
 makevars = home + '/.R/Makevars'
@@ -524,7 +573,7 @@ if home_exists and home_rx and Path(path).exists():
   if is_rx(path):
     pkgs = os.listdir(path)
     if pkgs: divider('julia', '')
-    if verbose: print_columns(pkgs, [])
+    if verbose: print_columns(pkgs, "julia")
 
 # ~/.matlab
 path = home + '/.matlab'
@@ -582,6 +631,7 @@ for i, line in enumerate(lines):
       ratio = int(round(100 * normUsage / normShares, -1))
       ratio = f"{ratio}%"
     print(fairshare, ratio, group)
+    print(f"Group ownership of cluster: {round(100 * normShares)}%")
     # red if extreme numbers
 
 # sacct
@@ -603,10 +653,10 @@ if verbose:
   # scontrol show reservation
 
 # size of /home
-if verbose and 0:
+if disk:
   try:
     cmd = "du -sh /home/" + netid + " 2>/dev/null"
-    output = subprocess.run(cmd, capture_output=True, shell=True, timeout=20)
+    output = subprocess.run(cmd, capture_output=True, shell=True, timeout=15)
     lines = output.stdout.decode("utf-8").split('\n')
     divider('size of /home on ' + host, '')
     print(lines[0].split('\t')[0])
@@ -624,6 +674,7 @@ if verbose and 0:
 # cat /home/netid/.bashrc
 # cat /home/netid/.bash_profile
 # if tiger in host or tigressdata: checkgpu -u 
+# add university vacation days and RC workshops
 
 # ps aux | grep netid -> what are they running on the head node
 # lsof
@@ -640,7 +691,7 @@ def second_tues_of_month(year, month):
   return second_tues
 
 def previous_and_next_downtime_dates():
-  '''Return a list of the prevoius and next downtime dates.'''
+  '''Display days from/to the previous/next downtime and dates'''
   today = datetime.today().date()
   year = today.year
   month = today.month
@@ -653,32 +704,26 @@ def previous_and_next_downtime_dates():
   if dt.days >= 0:
     # downtime in current month is lower bound so get downtime next month
     month += 1
-    if month ==  13:
-      month = 1
-      year += 1
-    next_second_tues = second_tues_of_month(year, month)
-    nxt = next_second_tues - today
-    prv = today - second_tues
-    tues = [second_tues.strftime(fmt), next_second_tues.strftime(fmt)]
-    # TODO: make bold red
-    if (nxt.days < 4):
-      print(f"{tues[0]} ({prv.days} days ago) --- Downtime --> ({term.red}{nxt.days} days away{term.normal}) {tues[1]}")
-    else:
-      print(f"{tues[0]} ({prv.days} days ago) --- Downtime --> ({nxt.days} days away) {tues[1]}")
+    month, year = (1, year + 1) if month == 13 else (month, year)
+    previous_tues = second_tues
+    upcoming_tues = second_tues_of_month(year, month)
   else:
-    # downtime in current month is upper bound so get downtime last month
+    # downtime in current month is upper bound so get downtime previous month
     month -= 1
-    if month == 0:
-      month = 12
-      year -= 1
-    prev_second_tues = second_tues_of_month(year, month)
-    nxt = second_tues - today
-    prv = today - prev_second_tues
-    tues = [prev_second_tues.strftime(fmt), second_tues.strftime(fmt)]
-    if (nxt.days < 4):
-      print(f"{tues[0]} ({prv.days} days ago) --- Downtime --> ({term.red}{nxt.days} days away{term.normal}) {tues[1]}")
-    else:
-      print(f"{tues[0]} ({prv.days} days ago) --- Downtime --> ({nxt.days} days away) {tues[1]}")
+    month, year = (12, year - 1) if month == 0 else (month, year)
+    previous_tues = second_tues_of_month(year, month)
+    upcoming_tues = second_tues
+
+  dt_previous = today - previous_tues
+  dt_upcoming = upcoming_tues - today
+  previous_tues = previous_tues.strftime(fmt)
+  upcoming_tues = upcoming_tues.strftime(fmt)
+
+  clr = f"{term.bold}{term.red}" if dt_previous.days <= 3 else ""
+  prv = f"{previous_tues} ({clr}{dt_previous.days} days ago{term.normal})"
+  clr = f"{term.bold}{term.red}" if dt_upcoming.days <= 7 else ""
+  nxt = f"({clr}{dt_upcoming.days} days ahead{term.normal}) {upcoming_tues}"
+  print(f"{prv} --- Downtime --> {nxt}")
   return None
 
 _ = previous_and_next_downtime_dates()
