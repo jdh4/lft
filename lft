@@ -17,11 +17,6 @@ from dossier import ldap_plus
 from blessed import Terminal
 import concurrent.futures
 
-# terminal preferences
-term = Terminal()
-width = 80
-gutter = ' '
-
 class StringBox(list):
   def __init__(self):
     super().__init__()
@@ -35,43 +30,44 @@ class StringBox(list):
     super().__setitem__(key, x)
     self.width = len(x) if len(x) > self.width else self.width
 
-def print_packages(items, language, max_chars=15, columns=5):
-  if language.lower() == "python":
-    parallel = ['mpi4py', 'mpich', 'intel-openmp', 'dask', 'joblib']
-    gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba']
+def print_packages(pkgs, language, max_chars=15, columns=5):
+  language = language.lower()
+  if language == "python":
+    parallel = ['mpi4py', 'mpich', 'intel-openmp', 'dask', 'joblib', 'tbb']
+    gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba', 'jax']
     green    = ['fenics', 'geopandas', 'tensorflow', 'tensorflow-gpu', 'torch', 'pystan']
     red      = parallel + gpu
-  elif language.lower() == "r":
+  elif language == "r":
     parallel = ['furrr', 'Rmpi', 'doMPI', 'caret']
-    trouble = ['sf', 'rstan', 'Rcpp']
-    green = []
-    red = parallel + trouble
-  elif language.lower() == "julia":
-    green = []
+    trouble  = ['sf', 'rstan', 'Rcpp']
+    lock     = [pkg for pkg in pkgs if 'LOCK' in pkg]
+    green    = []
+    red      = parallel + trouble + lock
+  elif language == "julia":
+    green = ['Flux', 'GPUArrays', 'CUDAdrv', 'CUDAnative', 'CuArrays', 'TensorFlow', 'Knet', 'ScikitLearn']
     red = []
   else:
     green = []
     red = []
  
   clr = []
-  items.sort(key=lambda pkg: pkg.lower())
-  for item in items:
-    if item in green:
+  for pkg in pkgs:
+    if pkg in green:
       clr.append(f"{term.bold}{term.green}")
-    elif item in red:
+    elif pkg in red:
       clr.append(f"{term.bold}{term.red}")
     else:
       clr.append("")
 
-  rows = math.ceil(len(items) / columns)
+  rows = math.ceil(len(pkgs) / columns)
   for i in range(rows):
     s = gutter
     for j in range(columns):
       idx = j + columns * i
-      if idx < len(items):
-        item = items[idx].strip()
-        if len(item) > max_chars - 1: item = item[:max_chars - 2] + '+ '
-        s += clr[idx] + item + term.normal + ' ' * max(0, max_chars - len(items[idx]))
+      if idx >= len(pkgs): break
+      pkg = pkgs[idx]
+      if len(pkg) > max_chars - 1: pkg = pkg[:max_chars - 2] + '+ '
+      s += clr[idx] + pkg + term.normal + ' ' * (max_chars - len(pkg))
     print(s)
   return None
 
@@ -113,6 +109,19 @@ disk    = True if ('-d' in sys.argv) else False
 def get_user_info(x):
   return ldap_plus([x])
 
+##############################
+## terminal and preferences ##
+##############################
+term = Terminal()
+width = 80
+gutter = ' '
+if (term.width < width):
+  print(f"Terminal width too small ({term.width} < {width}). Exiting ...")
+  sys.exit(0)
+
+###############################
+## if __name__ == "__main__" ##
+###############################
 username = sys.argv[1].strip()
 with concurrent.futures.ThreadPoolExecutor() as executor:
   future = executor.submit(get_user_info, username)
@@ -124,7 +133,7 @@ netid = person[1][9]
 # check for existence and permissions of home directory
 home_rx = False
 home = '/home/' + netid
-if Path(home).exists():
+if Path(home).is_dir():
   home_exists = True
   if is_rx(home):
     home_rx = True
@@ -149,7 +158,6 @@ host = mach[host]
 
 
 print(term.home + term.clear)
-#print(f"Terminal size: {term.width}x{term.height}")
 message = f"{gutter}looking for trouble on {host} for {username}"
 now = datetime.today().strftime('%-I:%M %p (%b %-d)')
 num_spaces = width - len(message) - len(now) - len(gutter)
@@ -277,7 +285,7 @@ def analyze_startup_script(flnm, default):
           miniconda = True
         if 'anaconda' in line.lower() and 'path' in line.lower():
           anaconda = True
-        if 'r_libs=' in line.lower() and 'export' in line.lower():
+        if 'r_libs' in line.lower() and 'export' in line.lower() and '_user' not in line.lower():
           rlibs = True
         if 'r_libs_user' in line.lower() and 'export' in line.lower():
           rlibsuser = True
@@ -466,40 +474,58 @@ def clean_python_packages(pkgs):
     else:
       pkg_cleaned = parts[0]
     pkgs_cleaned.append(pkg_cleaned)
-  return list(set(pkgs_cleaned) - set(noshow))
+  return sorted(list(set(pkgs_cleaned) - set(noshow)), key=lambda p: p.lower())
 
-# .conda
+def check_python(ppd):
+  global printed_python_divider
+  if not ppd:
+    divider(term.bold('Python'), '')
+    printed_python_divider = True
+  return None
+
+############
+## python ##
+############
 versions = ['2.6', '2.7', '3.6', '3.7', '3.8']
 
-# conda environments
-# TODO is the package called fenics or something else
-# TODO with verbose show certain libs: /home/jdh4/.conda/envs/tf2-gpu/lib
-
-divider(term.bold('Python'), '')
-dot_conda = home + '/.conda'
-if home_exists and home_rx and os.path.isdir(dot_conda) and is_rx(dot_conda):
-  path = dot_conda + '/envs'
-  if os.path.isdir(path) and is_rx(path):
-    envs = os.listdir(path)
-    if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
-    for env in envs:
-      mtime = datetime.fromtimestamp(os.stat(dot_conda + f'/envs/{env}').st_mtime)
-      if not verbose:
-        print(gutter, '~/.conda/envs/' + term.bold(env), mtime.strftime(' (%-m/%-d/%Y)'))
+# conda
+printed_python_divider = False
+path = home + '/.conda'
+if home_exists and home_rx and os.path.isdir(path):
+  if is_rx(path):
+    path = home + '/.conda/envs'
+    if os.path.isdir(path):
+      if is_rx(path):
+        envs = os.listdir(path)
+        if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
+        for env in envs:
+          mtime = datetime.fromtimestamp(os.stat(f"{home}/.conda/envs/{env}").st_mtime)
+          if verbose:
+            success_per_env = False
+            for version in versions:
+              path = f"{home}/.conda/envs/{env}/lib/python{version}/site-packages"
+              if os.path.isdir(path) and is_rx(path):
+                check_python(printed_python_divider)
+                print(f"     ~/.conda/envs/{term.bold}{env}{term.normal}/lib/python"
+                      f"{version}/site-packages {mtime.strftime(' (%-m/%-d/%y)')}")
+                pkgs = os.listdir(path)
+                pkgs = [pkg for pkg in pkgs if os.path.isdir(os.path.join(path, pkg))]
+                pkgs = clean_python_packages(pkgs)
+                print_packages(pkgs, "python")
+                success_per_env = True
+                print('-' * width)
+            if not success_per_env:
+              check_python(printed_python_divider)
+              print(f"{gutter}{home}/.conda/envs/{env}: packages are private")
+          else:
+            check_python(printed_python_divider)
+            print(gutter, '~/.conda/envs/' + term.bold(env), mtime.strftime(' (%-m/%-d/%Y)'))
       else:
-        success = False
-        for version in versions:
-          path = f"{home}/.conda/envs/{env}/lib/python{version}/site-packages"
-          if os.path.isdir(path) and is_rx(path):
-            print(f"    {gutter}~/.conda/envs/{term.bold}{env}{term.normal}/lib/python"
-                  f"{version}/site-packages {mtime.strftime(' (%-m/%-d/%y)')}")
-            pkgs = os.listdir(path)
-            pkgs = [pkg for pkg in pkgs if os.path.isdir(os.path.join(path, pkg))]
-            pkgs = clean_python_packages(pkgs)
-            print_packages(pkgs, "python")
-            success = True
-            print('-' * width)
-        if not success: print(f"{home}/.conda/envs/{env}: packages are private")
+        check_python(printed_python_divider)
+        print(f"{path} is private")
+  else:
+    check_python(printed_python_divider)
+    print(f"{path} is private")
 
 # .local (pip install --user <package>)
 path = home + '/.local'
@@ -508,21 +534,20 @@ if home_exists and home_rx and os.path.isdir(path) and is_rx(path):
     path = f"{home}/.local/lib/python{version}/site-packages"
     if os.path.isdir(path):
       if is_rx(path):
+        check_python(printed_python_divider)
+        print(f"     {term.bold}{term.blue}{path}{term.normal}")
         if verbose:
-          print(path)
           pkgs = os.listdir(path)
           pkgs = [pkg for pkg in pkgs if os.path.isdir(path + '/' + pkg)]
           pkgs = clean_python_packages(pkgs)
           print_packages(pkgs, "python")
-          print('-' * width)
-        else:
-          print(path)
-          print('-' * width)
+        print('-' * width)
       else:
+        check_python(printed_python_divider)
         print(f"{path} is private")
         print('-' * width)
 else:
-  print(path, "does not exist")
+  if printed_python_divider: print(f"{path} does not exist")
 
 # .condarc
 path = home + '/.condarc'
@@ -540,53 +565,54 @@ if miniconda: print("miniconda: yes")
 
 def clean_r_packages(pkgs):
   noshow = []
-  pkgs_cleaned = []
-  for pkg in pkgs:
-    parts = pkg.split('-')
-    if len(parts) > 1 and parts[1][0].isalpha():
-      pkg_cleaned = '-'.join([parts[0], parts[1]])
-    else:
-      pkg_cleaned = parts[0]
-    pkgs_cleaned.append(pkg_cleaned)
-  return list(set(pkgs_cleaned) - set(noshow))
+  return sorted(list(set(pkgs) - set(noshow)), key=lambda p: p.lower())
 
-# R
-first_time = True
+# R packages
+printed_r_divider = False
 path = home + '/R'
 if home_exists and home_rx and os.path.isdir(path):
   for version in ['3.6', '4.0']:
     path = home + f"/R/x86_64-redhat-linux-gnu-library/{version}"
     if os.path.isdir(path):
       if is_rx(path):
-        if first_time:
+        if not printed_r_divider:
           divider(term.bold('R'), '')
-          first_time = False
+          printed_r_divider = True
         pkgs = os.listdir(path)
-        #pkgs = clean_r_packages(pkgs)
+        pkgs = clean_r_packages(pkgs)
         print(f"     ~/R/x86_64-redhat-linux-gnu-library/{term.bold}{version}{term.normal}")
         if verbose: print_packages(pkgs, "R", max_chars=13, columns=6)
       else:
         print(f"{path} is private")
  
-# Makevars
-makevars = home + '/.R/Makevars'
-if os.path.isfile(makevars):
-  print(makevars, "exists")
-if rlibs: print("R_LIBS was set")
-if rlibsuser: print("R_LIBS_USER was set")
+# R misc
+path = home + '/.R/Makevars'
+if printed_r_divider and (os.path.isfile(path) or rlibs or rlibsuser):
+  print("-" * width)
+  if os.path.isfile(path):
+    print(f"{term.bold}{term.red}{path} exists{term.normal}")
+  if rlibs: print("R_LIBS was set")
+  if rlibsuser: print("R_LIBS_USER was set")
 
-#print(os.path.isfile(home + '/.bbashrc')) # gives false for luet
-#print(os.path.isfile(home + '/.bashrc'))  # gives false for luet
-# need to figure out when to use Path, os.path. and is_rx
-# need something like home_exists_and_rx
-
-# ~/.julia
-path = home + '/.julia/packages'
-if home_exists and home_rx and Path(path).exists():
-  if is_rx(path):
-    pkgs = os.listdir(path)
-    if pkgs: divider('julia', '')
-    if verbose: print_packages(pkgs, "julia")
+###########
+## julia ##
+###########
+path = home + '/.julia'
+if home_exists and home_rx and os.path.isdir(path):
+  path = home + '/.julia/packages'
+  if os.path.isdir(path):
+    if is_rx(path):
+      pkgs = os.listdir(path)
+      if pkgs:
+        divider(term.bold('Julia'), '')
+        print(f"     {path}")
+        if verbose:
+          noshow = []
+          pkgs = sorted(list(set(pkgs) - set(noshow)), key=lambda p: p.lower())
+          print_packages(pkgs, "julia")
+    else:
+      divider(term.bold('Julia'), '')
+      print(f"{path} is private")
 
 # ~/.matlab
 path = home + '/.matlab'
@@ -596,8 +622,6 @@ if home_exists and home_rx and Path(path).exists():
     # versions used via slurm or interactively
     versions_used = os.listdir(path)
     print(' '.join(versions_used))
-
-# RLIBS or whatever people set in .bashrc
 
 # ondemand
 path = home + '/ondemand'
@@ -683,12 +707,8 @@ if disk:
 # .ssh
 # .Xauthority
 # .allinea
-# cd /home/netid
-# cat /home/netid/.bashrc
-# cat /home/netid/.bash_profile
 # if tiger in host or tigressdata: checkgpu -u 
 # add university vacation days and RC workshops
-
 # ps aux | grep netid -> what are they running on the head node
 # lsof
 
