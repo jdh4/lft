@@ -18,8 +18,16 @@ Then run these commands:
 
 ```
 $ module load anaconda3
-$ conda create --name blessed-env --channel conda-forge blessed -y
-$ mv /home/jdh4/.conda/envs/blessed-env /scratch/gpfs/jdh4
+$ conda create --name terminal-env --channel conda-forge blessed -y
+```
+
+On Traverse:
+
+```
+$ module load anaconda3
+$ conda create --name terminal-env python=3.8
+$ conda activate terminal-env
+$ pip install blessed
 ```
 
 Too many people have default .bashrc files these commands demonstrate:

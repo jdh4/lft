@@ -1,4 +1,4 @@
-#!/scratch/gpfs/jdh4/blessed-env/bin/python -u
+#!/scratch/gpfs/jdh4/terminal-env/bin/python -u
 
 # post issues to https://github.com/jdh4/lft
 # or write to halverson@princeton.edu
@@ -6,7 +6,8 @@
 import os
 import sys
 sys.path.append('/scratch/gpfs/jdh4/gpustat') # to find dossier
-sys.path.append('/tiger/scratch/gpfs/jdh4/gpustat') # to find dossier from tigressdata
+sys.path.append('/tiger/scratch/gpfs/jdh4/gpustat') # to find dossier on tigressdata
+sys.path.append('/scratch/network/jdh4/gpustat') # to find dossier on adroit
 import math
 import subprocess
 from pathlib import Path
@@ -15,7 +16,6 @@ from time import time
 from socket import gethostname
 from dossier import ldap_plus
 from blessed import Terminal
-import concurrent.futures
 
 class StringBox(list):
   def __init__(self):
@@ -33,9 +33,10 @@ class StringBox(list):
 def print_packages(pkgs, language, max_chars=15, columns=5):
   language = language.lower()
   if language == "python":
-    parallel = ['mpi4py', 'mpich', 'intel-openmp', 'dask', 'joblib', 'tbb']
+    parallel = ['mpi4py', 'mpich', 'intel_openmp', 'dask', 'joblib', 'tbb']
     gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba', 'jax']
-    green    = ['fenics', 'geopandas', 'tensorflow', 'tensorflow-gpu', 'torch', 'pystan']
+    green    = ['fenics', 'geopandas', 'tensorflow', 'tensorflow_gpu', \
+                'torch', 'pystan', 'jupyter']
     red      = parallel + gpu
   elif language == "r":
     parallel = ['furrr', 'Rmpi', 'doMPI', 'caret']
@@ -44,7 +45,8 @@ def print_packages(pkgs, language, max_chars=15, columns=5):
     green    = []
     red      = parallel + trouble + lock
   elif language == "julia":
-    green = ['Flux', 'GPUArrays', 'CUDAdrv', 'CUDAnative', 'CuArrays', 'TensorFlow', 'Knet', 'ScikitLearn']
+    green = ['Flux', 'GPUArrays', 'CUDAdrv', 'CUDAnative', 'CuArrays', \
+             'TensorFlow', 'Knet', 'ScikitLearn']
     red = []
   else:
     green = []
@@ -105,10 +107,6 @@ if ('-h' in sys.argv or '--help' in sys.argv):
 verbose = True if ('-v' in sys.argv) else False
 disk    = True if ('-d' in sys.argv) else False
 
-
-def get_user_info(x):
-  return ldap_plus([x])
-
 ##############################
 ## terminal and preferences ##
 ##############################
@@ -123,15 +121,15 @@ if (term.width < width):
 ## if __name__ == "__main__" ##
 ###############################
 username = sys.argv[1].strip()
-with concurrent.futures.ThreadPoolExecutor() as executor:
-  future = executor.submit(get_user_info, username)
-  person = future.result()
-# what happens if ldapsearch fails?
+person = ldap_plus([username])
 netid = person[1][9]
-# need to check if netid is legit before going forward
+if netid is None:
+  print("")
+  print(f"{username} not found in Princeton LDAP. Exiting ...")
+  print("")
+  sys.exit(0)
 
 # check for existence and permissions of home directory
-home_rx = False
 home = '/home/' + netid
 if Path(home).is_dir():
   home_exists = True
@@ -142,6 +140,7 @@ if Path(home).is_dir():
     print(f"{home} is not accessible.")
 else:
   home_exists = False
+  home_rx = False
   print(f"{home} does not exist.")
 
 host = gethostname().lower()
@@ -264,7 +263,7 @@ def analyze_startup_script(flnm, default):
     startup_rm = remove_comments_and_white_space(lines)
     default_rm = remove_comments_and_white_space(default)
     if (startup_rm == default_rm):
-      print(f"{flnm}: default")
+      print(f"{gutter}{flnm}: default")
     else:
       for line in lines:
         if line.strip().startswith('#'): continue
@@ -290,7 +289,10 @@ def analyze_startup_script(flnm, default):
         if 'r_libs_user' in line.lower() and 'export' in line.lower():
           rlibsuser = True
       #print(f"{flnm} >> alias:{aliases}  export:{exports}  source:{source}")
-      print(f"{flnm}: alias:{aliases}  export:{exports}")
+      if verbose:
+        print(f"{gutter}~/{flnm}: alias:{aliases}  export:{exports}")
+      else:
+        print(f"{gutter}~/{flnm}: custom")
       if modules:
         mods = format_modules(modules)
         if verbose or len(mods) < 4:
@@ -301,7 +303,7 @@ def analyze_startup_script(flnm, default):
             print(f"   {term.bold}{term.red}{mod}{term.normal}")
           print(f"   {term.bold}{term.red}(plus {len(mods) - 3} more){term.normal}")
   else:
-    print(f"{flnm}: does not exist")
+    print(f"{gutter}{flnm}: does not exist")
 
 # .bashrc and .bash_profile
 #divider(f"{term.bold}Environment{term.normal} (cat /home/{netid}/.bashrc)", '')
@@ -373,7 +375,8 @@ with term.location():
 cmd = "groups " + netid
 output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
 lines = output.stdout.decode("utf-8").split('\n')
-# jdh4 : cses quijote
+# jdh4 : cses quijote (success)
+# groups: aturing: no such user (fail)
 grps = lines[0].split(':')[-1].split()
 if len(grps) > 3:
   grps = ', '.join(grps[:3]) + ', ...'
@@ -385,7 +388,13 @@ with term.location():
 # home
 import csv
 # TODO different path for adroit and tigressdata
-flnm = "/tigress/jdh4/python-devel/lft/combined_ls.csv"
+# on adroit (and others?) consider: /home/jdh4/software/bin/lft
+if host == "adroit":
+  flnm = "/scratch/network/jdh4/python-utilities/.lft/combined_ls.csv"
+elif host == "tigressdata":
+  flnm = "/tiger/scratch/gpfs/jdh4/python-devel/lft/combined_ls.csv"
+else:
+  flnm = "/tigress/jdh4/python-devel/lft/combined_ls.csv"
 with open(flnm, mode='r') as csv_file:
   csv_reader = csv.DictReader(csv_file)
   next(csv_reader)
@@ -401,20 +410,47 @@ if hdirs:
       pre = "*" if hdir in host else " "
       print(term.move_x(67) + pre + hdir)
 
-# sponsor_report
+####################
+## sponsor_report ##
+####################
+
 # TODO luet does not have account on tiger
 # TODO hwaight does not have a sponsor since only adroit account
+
+# $ sponsor_report jdh4
+# No sponsored users for jdh4 (Jonathan D. Halverson)
+# This user is sponsored by curt
+
+# $ sponsor_report aturing
+# FATAL ERROR: Could not find user aturing in Princeton LDAP
+
+# $ sponsor_report hwaight
+# hwaight (Hannah C. Waight) has no Tigress account
+
+# $ sponsor_report ethier
+# Manager ethier (Stephane Ethier) has sponsored the following users
+#      gascione (George Ascione) has accounts on eddy
+
+# Cluster eddy has these users gascione
+
 cmd = "sponsor_report " + netid
-output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
-lines = output.stdout.decode("utf-8").split('\n')
-if 'No sponsored users' in lines[0]:
-  # This user is sponsored by curt
-  sponsor = lines[1].split()[-1]
-elif "Manager" in lines[0] and "has sponsored" in lines[0]:
-  sponsor = netid
-elif "has no Tigress account" in lines[0]:
-  sponsor = ''
-# how to get clusters for managers?
+try:
+  output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
+except subprocess.TimeoutExpired:
+  print("timed out", netid)
+  sponsor = None
+except:
+  # netid not in Princeton LDAP
+  print("except", netid)
+  sponsor = None
+else:
+  lines = output.stdout.decode("utf-8").split('\n')
+  if 'No sponsored users' in lines[0]:
+    sponsor = lines[1].split()[-1]
+  elif "Manager" in lines[0] and "has sponsored" in lines[0]:
+    sponsor = netid
+  else:
+    sponsor = None
 
 def remove_middle_initial(full_name):
   parts = full_name.split()
@@ -427,41 +463,43 @@ def remove_middle_initial(full_name):
   else:
     return full_name
 
-accounts = []
-cmd = "sponsor_report " + sponsor
-output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
-lines = output.stdout.decode("utf-8").split('\n')
-for line in lines:
-  if "Manager" in line and "has sponsored" in line:
-    # Manager curt (Curtis W. Hillegas) has sponsored the following users
-    sponsor_full_name = line.split('(')[1].split(')')[0]
-    sponsor_full_name = remove_middle_initial(sponsor_full_name)
-    with term.location():
-      print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
-  if netid in line and 'has accounts on' in line:
-    # jdh4 (Jonathan D. Halverson) has accounts on della, perseus, tiger, traverse
-    accounts = line.split('has accounts')[-1].replace(',', '').split()[1:]
-    if 'mcmillan' in accounts: accounts.remove('mcmillan')
-    if 'eddy' in accounts: accounts.remove('eddy')
+if 0:
+  accounts = []
+  cmd = "sponsor_report " + sponsor
+  output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
+  lines = output.stdout.decode("utf-8").split('\n')
+  for line in lines:
+    if "Manager" in line and "has sponsored" in line:
+      # Manager curt (Curtis W. Hillegas) has sponsored the following users
+      sponsor_full_name = line.split('(')[1].split(')')[0]
+      sponsor_full_name = remove_middle_initial(sponsor_full_name)
+      with term.location():
+        print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
+    if netid in line and 'has accounts on' in line:
+      # jdh4 (Jonathan D. Halverson) has accounts on della, perseus, tiger, traverse
+      accounts = line.split('has accounts')[-1].replace(',', '').split()[1:]
+      if 'mcmillan' in accounts: accounts.remove('mcmillan')
+      if 'eddy' in accounts: accounts.remove('eddy')
 
-# check for account adroit and tigressdata (use threading while sponsorreport runs)
-path = '/tigress/jdh4/python-devel/lft'
-with open(path + '/adroit_getent.txt', 'r') as f:
-  adroit_users = f.readlines()
-for user in adroit_users:
-  if user == netid + '\n':
-   accounts.append("adroit")
-# check for account on tigressdata
-with open(path + '/tigressdata_getent.txt', 'r') as f:
-  tg_users = f.readlines()
-for user in tg_users:
-  if user == netid + '\n':
-    accounts.append("tigressdata")
-# print accounts
-with term.location(50, 5):
-  for account in sorted(accounts):
-    pre = "*" if account in host else " "
-    print(term.move_x(50) + pre + account)
+if 0:
+  # check for account adroit and tigressdata (use threading while sponsorreport runs)
+  path = '/tigress/jdh4/python-devel/lft'
+  with open(path + '/adroit_getent.txt', 'r') as f:
+    adroit_users = f.readlines()
+  for user in adroit_users:
+    if user == netid + '\n':
+     accounts.append("adroit")
+  # check for account on tigressdata
+  with open(path + '/tigressdata_getent.txt', 'r') as f:
+    tg_users = f.readlines()
+  for user in tg_users:
+    if user == netid + '\n':
+      accounts.append("tigressdata")
+  # print accounts
+  with term.location(50, 5):
+    for account in sorted(accounts):
+      pre = "*" if account in host else " "
+      print(term.move_x(50) + pre + account)
 
 def clean_python_packages(pkgs):
   noshow = ['lib', 'bin', '__pycache__', 'six', 'pasta', 'pip', 'wheel', \
@@ -483,10 +521,21 @@ def check_python(ppd):
     printed_python_divider = True
   return None
 
-############
-## python ##
-############
+#      ___                                 ___           ___           ___     
+#     /  /\        ___         ___        /__/\         /  /\         /__/\    
+#    /  /::\      /__/|       /  /\       \  \:\       /  /::\        \  \:\   
+#   /  /:/\:\    |  |:|      /  /:/        \__\:\     /  /:/\:\        \  \:\  
+#  /  /:/~/:/    |  |:|     /  /:/     ___ /  /::\   /  /:/  \:\   _____\__\:\ 
+# /__/:/ /:/   __|__|:|    /  /::\    /__/\  /:/\:\ /__/:/ \__\:\ /__/::::::::\
+# \  \:\/:/   /__/::::\   /__/:/\:\   \  \:\/:/__\/ \  \:\ /  /:/ \  \:\~~\~~\/
+#  \  \::/       ~\~~\:\  \__\/  \:\   \  \::/       \  \:\  /:/   \  \:\  ~~~ 
+#   \  \:\         \  \:\      \  \:\   \  \:\        \  \:\/:/     \  \:\     
+#    \  \:\         \__\/       \__\/    \  \:\        \  \::/       \  \:\    
+#     \__\/                               \__\/         \__\/         \__\/    
+
 versions = ['2.6', '2.7', '3.6', '3.7', '3.8']
+#frmt = "(%-m/%-d/%Y)"
+frmt = "(%b %Y)"
 
 # conda
 printed_python_divider = False
@@ -499,33 +548,34 @@ if home_exists and home_rx and os.path.isdir(path):
         envs = os.listdir(path)
         if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
         for env in envs:
-          mtime = datetime.fromtimestamp(os.stat(f"{home}/.conda/envs/{env}").st_mtime)
-          if verbose:
-            success_per_env = False
-            for version in versions:
-              path = f"{home}/.conda/envs/{env}/lib/python{version}/site-packages"
-              if os.path.isdir(path) and is_rx(path):
+          success_per_env = False
+          for version in versions:
+            path = f"{home}/.conda/envs/{env}/lib/python{version}/site-packages"
+            if os.path.isdir(path) and is_rx(path):
+              success_per_env = True
+              if verbose:
                 check_python(printed_python_divider)
+                mtime = datetime.fromtimestamp(os.stat(f"{home}/.conda/envs/{env}").st_mtime)
+                mtime = mtime.strftime(frmt)
                 print(f"     ~/.conda/envs/{term.bold}{env}{term.normal}/lib/python"
-                      f"{version}/site-packages {mtime.strftime(' (%-m/%-d/%y)')}")
+                      f"{version}/site-packages {mtime}")
                 pkgs = os.listdir(path)
                 pkgs = [pkg for pkg in pkgs if os.path.isdir(os.path.join(path, pkg))]
                 pkgs = clean_python_packages(pkgs)
                 print_packages(pkgs, "python")
-                success_per_env = True
                 print('-' * width)
-            if not success_per_env:
-              check_python(printed_python_divider)
-              print(f"{gutter}{home}/.conda/envs/{env}: packages are private")
-          else:
+              else:
+                check_python(printed_python_divider)
+                print(f"{gutter}~/.conda/envs/{term.bold}{env}{term.normal}")
+          if not success_per_env:
             check_python(printed_python_divider)
-            print(gutter, '~/.conda/envs/' + term.bold(env), mtime.strftime(' (%-m/%-d/%Y)'))
+            print(f"{gutter}~/.conda/envs/{env}: exists")
       else:
         check_python(printed_python_divider)
-        print(f"{path} is private")
+        print(f"{gutter}~/.conda/envs: private")
   else:
     check_python(printed_python_divider)
-    print(f"{path} is private")
+    print(f"{gutter}~/.conda: private")
 
 # .local (pip install --user <package>)
 path = home + '/.local'
@@ -535,31 +585,34 @@ if home_exists and home_rx and os.path.isdir(path) and is_rx(path):
     if os.path.isdir(path):
       if is_rx(path):
         check_python(printed_python_divider)
-        print(f"     {term.bold}{term.blue}{path}{term.normal}")
         if verbose:
+          print(f"     ~/.local/lib/{term.bold}python{version}{term.normal}/site-packages")
           pkgs = os.listdir(path)
           pkgs = [pkg for pkg in pkgs if os.path.isdir(path + '/' + pkg)]
           pkgs = clean_python_packages(pkgs)
           print_packages(pkgs, "python")
-        print('-' * width)
+          print('-' * width)
+        else:
+          print(f"{gutter}~/.local/lib/{term.bold}python{version}{term.normal}/site-packages")
       else:
         check_python(printed_python_divider)
-        print(f"{path} is private")
+        print(f"{gutter}~/.local/lib/{term.bold}python{version}{term.normal}/site-packages (private)")
         print('-' * width)
 else:
-  if printed_python_divider: print(f"{path} does not exist")
+  if printed_python_divider:
+    print(f"{gutter}~/.local does not exist")
 
 # .condarc
 path = home + '/.condarc'
-if home_exists and home_rx and Path(path).exists():
-  print(f"{term.bold}{term.red}~/.condarc{term.normal} was found")
+if home_exists and home_rx and os.path.isfile(path):
+  print(f"{gutter}{term.bold}{term.red}~/.condarc{term.normal}: yes")
 
 # .cache
 path = home + '/.cache'
 dot_cache = True if home_exists and home_rx and Path(path).exists() else False
 
-if pythonpath: print(f"PYTHONPATH was set")
-if dot_cache: print("~/.cache: yes")
+if pythonpath: print(f"{gutter}PYTHONPATH was set")
+if dot_cache: print(f"{gutter}~/.cache: yes")
 if anaconda: print("anaconda: yes")
 if miniconda: print("miniconda: yes")
 
@@ -571,7 +624,7 @@ def clean_r_packages(pkgs):
 printed_r_divider = False
 path = home + '/R'
 if home_exists and home_rx and os.path.isdir(path):
-  for version in ['3.6', '4.0']:
+  for version in ['3.3', '3.4', '3.5', '3.6', '4.0']:
     path = home + f"/R/x86_64-redhat-linux-gnu-library/{version}"
     if os.path.isdir(path):
       if is_rx(path):
@@ -580,8 +633,12 @@ if home_exists and home_rx and os.path.isdir(path):
           printed_r_divider = True
         pkgs = os.listdir(path)
         pkgs = clean_r_packages(pkgs)
-        print(f"     ~/R/x86_64-redhat-linux-gnu-library/{term.bold}{version}{term.normal}")
-        if verbose: print_packages(pkgs, "R", max_chars=13, columns=6)
+        if verbose:
+          print(f"     ~/R/x86_64-redhat-linux-gnu-library/{term.bold}{version}{term.normal}")
+          print_packages(pkgs, "R", max_chars=13, columns=6)
+          print('-' * width)
+        else:
+          print(f"{gutter}~/R/x86_64-redhat-linux-gnu-library/{term.bold}{version}{term.normal}")
       else:
         print(f"{path} is private")
  
@@ -604,15 +661,17 @@ if home_exists and home_rx and os.path.isdir(path):
     if is_rx(path):
       pkgs = os.listdir(path)
       if pkgs:
-        divider(term.bold('Julia'), '')
-        print(f"     {path}")
         if verbose:
+          divider(term.bold('Julia') + ' (~/.julia/packages)', '')
           noshow = []
           pkgs = sorted(list(set(pkgs) - set(noshow)), key=lambda p: p.lower())
           print_packages(pkgs, "julia")
+        else:
+          divider(term.bold('Julia'), '')
+          print(f"{gutter}~/.julia/packages")
     else:
       divider(term.bold('Julia'), '')
-      print(f"{path} is private")
+      print(f"{gutter}~/.julia/packages is private")
 
 # ~/.matlab
 path = home + '/.matlab'
@@ -630,6 +689,28 @@ if home_exists and home_rx and Path(path).exists():
     divider('ondemand', '')
     if Path(path + '/data/sys/dashboard/batch_connect/sys/rstudio_server').exists():
       print("Ondemand RStudio")
+
+#          _____                   _______                   _____                    _____          
+#         /\    \                 /::\    \                 /\    \                  /\    \         
+#        /::\    \               /::::\    \               /::\    \                /::\    \        
+#        \:::\    \             /::::::\    \             /::::\    \              /::::\    \       
+#         \:::\    \           /::::::::\    \           /::::::\    \            /::::::\    \      
+#          \:::\    \         /:::/~~\:::\    \         /:::/\:::\    \          /:::/\:::\    \     
+#           \:::\    \       /:::/    \:::\    \       /:::/__\:::\    \        /:::/__\:::\    \    
+#           /::::\    \     /:::/    / \:::\    \     /::::\   \:::\    \       \:::\   \:::\    \   
+#  _____   /::::::\    \   /:::/____/   \:::\____\   /::::::\   \:::\    \    ___\:::\   \:::\    \  
+# /\    \ /:::/\:::\    \ |:::|    |     |:::|    | /:::/\:::\   \:::\ ___\  /\   \:::\   \:::\    \ 
+#/::\    /:::/  \:::\____\|:::|____|     |:::|    |/:::/__\:::\   \:::|    |/::\   \:::\   \:::\____\
+#\:::\  /:::/    \::/    / \:::\    \   /:::/    / \:::\   \:::\  /:::|____|\:::\   \:::\   \::/    /
+# \:::\/:::/    / \/____/   \:::\    \ /:::/    /   \:::\   \:::\/:::/    /  \:::\   \:::\   \/____/ 
+#  \::::::/    /             \:::\    /:::/    /     \:::\   \::::::/    /    \:::\   \:::\    \     
+#   \::::/    /               \:::\__/:::/    /       \:::\   \::::/    /      \:::\   \:::\____\    
+#    \::/    /                 \::::::::/    /         \:::\  /:::/    /        \:::\  /:::/    /    
+#     \/____/                   \::::::/    /           \:::\/:::/    /          \:::\/:::/    /     
+#                                \::::/    /             \::::::/    /            \::::::/    /      
+#                                 \::/____/               \::::/    /              \::::/    /       
+#                                  ~~                      \::/____/                \::/    /        
+#                                                           ~~                       \/____/         
 
 print("\n " + term.bold("Jobs"))
 print("=" * width)
@@ -659,7 +740,7 @@ lines = output.stdout.decode("utf-8").split('\n')
 for i, line in enumerate(lines):
   if ' ' + netid + ' ' in line and i != 0:
     fairshare = f"{float(line.split()[7]):.2f}"
-    group = lines[i - 1].split()[0]
+    group = lines[i - 1].split()[0].upper()
     normShares = float(lines[i - 1].split()[2])
     normUsage  = float(lines[i - 1].split()[4])
     if normShares == 0:
@@ -667,9 +748,9 @@ for i, line in enumerate(lines):
     else:
       ratio = int(round(100 * normUsage / normShares, -1))
       ratio = f"{ratio}%"
-    print(fairshare, ratio, group)
-    print(f"Group ownership of cluster: {round(100 * normShares)}%")
-    # red if extreme numbers
+    gshare = f"{round(100 * normShares)}%"
+    print(f"fairshare:{fairshare}  30-day {group} usage:{ratio}  {group} share of cluster:{gshare}")
+    # TODO red if extreme numbers
 
 # sacct
 start_stamp = datetime.fromtimestamp(time() - 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
@@ -733,7 +814,7 @@ def previous_and_next_downtime_dates():
   dt = today - second_tues
 
   fmt = '%b %-d'
-  divider('downtime', '')
+  print("=" * width)
   if dt.days >= 0:
     # downtime in current month is lower bound so get downtime next month
     month += 1
@@ -752,11 +833,25 @@ def previous_and_next_downtime_dates():
   previous_tues = previous_tues.strftime(fmt)
   upcoming_tues = upcoming_tues.strftime(fmt)
 
+  # format previous downtime
   clr = f"{term.bold}{term.red}" if dt_previous.days <= 3 else ""
-  prv = f"{previous_tues} ({clr}{dt_previous.days} days ago{term.normal})"
+  if dt_previous.days == 0:
+    prv = f"{previous_tues} ({clr}today{term.normal})"
+  elif dt_previous.days == 1:
+    prv = f"{previous_tues} ({clr}yesterday{term.normal})"
+  else:
+    prv = f"{previous_tues} ({clr}{dt_previous.days} days ago{term.normal})"
+
+  # format upcoming downtime
   clr = f"{term.bold}{term.red}" if dt_upcoming.days <= 7 else ""
-  nxt = f"({clr}{dt_upcoming.days} days ahead{term.normal}) {upcoming_tues}"
-  print(f"{prv} --- Downtime --> {nxt}")
+  if dt_upcoming.days == 0:
+    nxt = f"({clr}today{term.normal}) {upcoming_tues}"
+  elif dt_upcoming.days == 1:
+    nxt = f"({clr}tomorrow{term.normal}) {upcoming_tues}"
+  else:
+    nxt = f"({clr}{dt_upcoming.days} days ahead{term.normal}) {upcoming_tues}"
+
+  print(f"{gutter}{prv} --- Downtime --> {nxt}")
   return None
 
 _ = previous_and_next_downtime_dates()
