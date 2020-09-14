@@ -10,6 +10,7 @@ sys.path.append('/tiger/scratch/gpfs/jdh4/gpustat') # to find dossier on tigress
 sys.path.append('/scratch/network/jdh4/gpustat') # to find dossier on adroit
 import math
 import subprocess
+from subprocess import PIPE as sPIPE
 from pathlib import Path
 from datetime import datetime
 from time import time
@@ -157,7 +158,8 @@ host = mach[host]
 
 
 print(term.home + term.clear)
-message = f"{gutter}looking for trouble on {host} for {username}"
+#message = f"{gutter}looking for trouble on {host} for {username}"
+message = f"{gutter}looking for trouble"
 now = datetime.today().strftime('%-I:%M %p (%b %-d)')
 num_spaces = width - len(message) - len(now) - len(gutter)
 print("=" * width)
@@ -226,7 +228,6 @@ PATH=$PATH:$HOME/.local/bin:$HOME/bin
 export PATH
 """.split('\n')
 
-
 def format_modules(module_lines):
   # convert lines with multiple modules to single lines
   # e.g., module load intel intel-mpi cudatoolkit
@@ -235,7 +236,7 @@ def format_modules(module_lines):
     items = module_line.split()
     if len(items) > 1 and items[0] == 'module' and (items[1] == 'load' or items[1] == 'add'):
       for module in module_line.split()[2:]:
-        if module.endswith('/64'): module = module[:module.index('/64')]
+        #if module.endswith('/64'): module = module[:module.index('/64')]
         singles.append("module load " + module)
     else:
       singles.append(module_line)
@@ -263,7 +264,8 @@ def analyze_startup_script(flnm, default):
     startup_rm = remove_comments_and_white_space(lines)
     default_rm = remove_comments_and_white_space(default)
     if (startup_rm == default_rm):
-      print(f"{gutter}{flnm}: default")
+      sp = "      " if (flnm == '.bashrc') else ""
+      print(f"{gutter}{sp}~/{flnm}: default")
     else:
       for line in lines:
         if line.strip().startswith('#'): continue
@@ -297,11 +299,11 @@ def analyze_startup_script(flnm, default):
         mods = format_modules(modules)
         if verbose or len(mods) < 4:
           for mod in mods:
-            print(f"   {term.bold}{term.red}{mod}{term.normal}")
+            print(f"{gutter}{term.bold}{term.red}{mod}{term.normal}")
         else:
           for mod in mods[:3]:
-            print(f"   {term.bold}{term.red}{mod}{term.normal}")
-          print(f"   {term.bold}{term.red}(plus {len(mods) - 3} more){term.normal}")
+            print(f"{gutter}{term.bold}{term.red}{mod}{term.normal}")
+          print(f"{gutter}{term.bold}{term.red}(plus {len(mods) - 3} more){term.normal}")
   else:
     print(f"{gutter}{flnm}: does not exist")
 
@@ -334,21 +336,21 @@ is_cluster = any([cluster in host for cluster in clusters])
 if is_cluster: # why do it this way? to distinguish from tigressdata?
   fs = StringBox()
 
-  path = '/home/' + netid
-  if os.path.isdir(path) and not is_rx(path):
-    fs.append(f"{path}: private")
+  #path = '/home/' + netid
+  #if os.path.isdir(path) and not is_rx(path):
+  #  fs.append(f"{path}: private")
 
   path = '/scratch/gpfs/' + netid
   if os.path.isdir(path):
     fs.append(public_or_private(path))
 
   path = '/tigress/' + netid
-  if Path(path).exists():
+  if Path(path).is_dir():
     fs.append(public_or_private(path))
 
   if ('della' in host or 'adroit' in host):
     path = '/scratch/network/' + netid
-    if Path(path).exists():
+    if Path(path).is_dir():
       fs.append(public_or_private(path))
 
 # align filesystems on colon
@@ -362,16 +364,20 @@ if fs: fs = align_on_colon(fs)
 if not home_exists or not home_rx: print("\n" * fs.height)
 # print filesystems
 with term.location():
-  print(term.move_xy(width - fs.width - len(gutter), 12) + term.bold('Filesystems'))
-  for i in range(fs.height):
-    xc = width - fs.width - len(gutter)
-    yc = 14 + i
-    if 'home' in fs[i]:
-      print(term.move_xy(xc, yc) + term.red + term.bold + fs[i] + term.normal)
-    else:
-      print(term.move_xy(xc, yc) + fs[i])
+  if len(fs):
+    print(term.move_xy(width - fs.width - len(gutter), 12) + term.bold('Filesystems'))
+    for i in range(fs.height):
+      xc = width - fs.width - len(gutter)
+      yc = 14 + i
+      if 'home' in fs[i]:
+        print(term.move_xy(xc, yc) + term.red + term.bold + fs[i] + term.normal)
+      else:
+        print(term.move_xy(xc, yc) + fs[i])
 
-# groups
+############
+## groups ##
+############
+# TODO groups vary with cluster
 cmd = "groups " + netid
 output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
 lines = output.stdout.decode("utf-8").split('\n')
@@ -385,7 +391,9 @@ else:
 with term.location():
   print(term.move_xy(2, 6) + "Groups: " + grps)
 
-# home
+######################
+## home directories ##
+######################
 import csv
 # TODO different path for adroit and tigressdata
 # on adroit (and others?) consider: /home/jdh4/software/bin/lft
@@ -437,15 +445,14 @@ cmd = "sponsor_report " + netid
 try:
   output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
 except subprocess.TimeoutExpired:
-  print("timed out", netid)
+  #print("sponsor_report timed out looking for", netid)
   sponsor = None
 except:
   # netid not in Princeton LDAP
-  print("except", netid)
   sponsor = None
 else:
   lines = output.stdout.decode("utf-8").split('\n')
-  if 'No sponsored users' in lines[0]:
+  if len(lines) > 1 and 'No sponsored users' in lines[0]:
     sponsor = lines[1].split()[-1]
   elif "Manager" in lines[0] and "has sponsored" in lines[0]:
     sponsor = netid
@@ -463,23 +470,27 @@ def remove_middle_initial(full_name):
   else:
     return full_name
 
-if 0:
+if sponsor:
   accounts = []
   cmd = "sponsor_report " + sponsor
-  output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
-  lines = output.stdout.decode("utf-8").split('\n')
-  for line in lines:
-    if "Manager" in line and "has sponsored" in line:
-      # Manager curt (Curtis W. Hillegas) has sponsored the following users
-      sponsor_full_name = line.split('(')[1].split(')')[0]
-      sponsor_full_name = remove_middle_initial(sponsor_full_name)
-      with term.location():
-        print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
-    if netid in line and 'has accounts on' in line:
-      # jdh4 (Jonathan D. Halverson) has accounts on della, perseus, tiger, traverse
-      accounts = line.split('has accounts')[-1].replace(',', '').split()[1:]
-      if 'mcmillan' in accounts: accounts.remove('mcmillan')
-      if 'eddy' in accounts: accounts.remove('eddy')
+  try:
+    output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
+  except:
+    pass
+  else:
+    lines = output.stdout.decode("utf-8").split('\n')
+    for line in lines:
+      if "Manager" in line and "has sponsored" in line:
+        # Manager curt (Curtis W. Hillegas) has sponsored the following users
+        sponsor_full_name = line.split('(')[1].split(')')[0]
+        sponsor_full_name = remove_middle_initial(sponsor_full_name)
+        with term.location():
+          print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
+      if 0 and netid in line and 'has accounts on' in line:
+        # jdh4 (Jonathan D. Halverson) has accounts on della, perseus, tiger, traverse
+        accounts = line.split('has accounts')[-1].replace(',', '').split()[1:]
+        if 'mcmillan' in accounts: accounts.remove('mcmillan')
+        if 'eddy' in accounts: accounts.remove('eddy')
 
 if 0:
   # check for account adroit and tigressdata (use threading while sponsorreport runs)
@@ -501,6 +512,18 @@ if 0:
       pre = "*" if account in host else " "
       print(term.move_x(50) + pre + account)
 
+#      ___                                 ___           ___           ___     
+#     /  /\        ___         ___        /__/\         /  /\         /__/\    
+#    /  /::\      /__/|       /  /\       \  \:\       /  /::\        \  \:\   
+#   /  /:/\:\    |  |:|      /  /:/        \__\:\     /  /:/\:\        \  \:\  
+#  /  /:/~/:/    |  |:|     /  /:/     ___ /  /::\   /  /:/  \:\   _____\__\:\ 
+# /__/:/ /:/   __|__|:|    /  /::\    /__/\  /:/\:\ /__/:/ \__\:\ /__/::::::::\
+# \  \:\/:/   /__/::::\   /__/:/\:\   \  \:\/:/__\/ \  \:\ /  /:/ \  \:\~~\~~\/
+#  \  \::/       ~\~~\:\  \__\/  \:\   \  \::/       \  \:\  /:/   \  \:\  ~~~ 
+#   \  \:\         \  \:\      \  \:\   \  \:\        \  \:\/:/     \  \:\     
+#    \  \:\         \__\/       \__\/    \  \:\        \  \::/       \  \:\    
+#     \__\/                               \__\/         \__\/         \__\/    
+
 def clean_python_packages(pkgs):
   noshow = ['lib', 'bin', '__pycache__', 'six', 'pasta', 'pip', 'wheel', \
             'setuptools', 'pkgconfig', '_pytest']
@@ -521,23 +544,11 @@ def check_python(ppd):
     printed_python_divider = True
   return None
 
-#      ___                                 ___           ___           ___     
-#     /  /\        ___         ___        /__/\         /  /\         /__/\    
-#    /  /::\      /__/|       /  /\       \  \:\       /  /::\        \  \:\   
-#   /  /:/\:\    |  |:|      /  /:/        \__\:\     /  /:/\:\        \  \:\  
-#  /  /:/~/:/    |  |:|     /  /:/     ___ /  /::\   /  /:/  \:\   _____\__\:\ 
-# /__/:/ /:/   __|__|:|    /  /::\    /__/\  /:/\:\ /__/:/ \__\:\ /__/::::::::\
-# \  \:\/:/   /__/::::\   /__/:/\:\   \  \:\/:/__\/ \  \:\ /  /:/ \  \:\~~\~~\/
-#  \  \::/       ~\~~\:\  \__\/  \:\   \  \::/       \  \:\  /:/   \  \:\  ~~~ 
-#   \  \:\         \  \:\      \  \:\   \  \:\        \  \:\/:/     \  \:\     
-#    \  \:\         \__\/       \__\/    \  \:\        \  \::/       \  \:\    
-#     \__\/                               \__\/         \__\/         \__\/    
-
 versions = ['2.6', '2.7', '3.6', '3.7', '3.8']
 #frmt = "(%-m/%-d/%Y)"
 frmt = "(%b %Y)"
 
-# conda
+# conda TODO what if R within .conda
 printed_python_divider = False
 path = home + '/.conda'
 if home_exists and home_rx and os.path.isdir(path):
@@ -612,7 +623,7 @@ path = home + '/.cache'
 dot_cache = True if home_exists and home_rx and Path(path).exists() else False
 
 if pythonpath: print(f"{gutter}PYTHONPATH was set")
-if dot_cache: print(f"{gutter}~/.cache: yes")
+if dot_cache and printed_python_divider: print(f"{gutter}~/.cache: yes")
 if anaconda: print("anaconda: yes")
 if miniconda: print("miniconda: yes")
 
@@ -730,8 +741,7 @@ if is_cluster:
     if (' QOSMax' in line): qosmax += 1
     if ('ReqNodeNotAvail' in line): reqnode += 1
   if (running or pending or qosmax or reqnode):
-    #print('-' * width)
-    print(f"squeue -u {netid} >> Running: {running}  Pending: {pending}  QOSMax+: {qosmax}  ReqNodeNotAvail: {reqnode}")
+    print(f"{gutter}Running: {running}   Pending: {pending}   QOSMax+: {qosmax}   ReqNodeNotAvail: {reqnode}")
 
 # sshare
 cmd = f"sshare -l -u {netid}"
@@ -749,26 +759,70 @@ for i, line in enumerate(lines):
       ratio = int(round(100 * normUsage / normShares, -1))
       ratio = f"{ratio}%"
     gshare = f"{round(100 * normShares)}%"
-    print(f"fairshare:{fairshare}  30-day {group} usage:{ratio}  {group} share of cluster:{gshare}")
+    print(f"{gutter}Fairshare: {fairshare}   30-day {group} usage: {ratio}   {group} share of cluster: {gshare}")
     # TODO red if extreme numbers
+print('-' * width)
 
-# sacct
-start_stamp = datetime.fromtimestamp(time() - 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
+###########
+## sacct ##
+###########
+
+# https://wiki.hpcc.msu.edu/display/ITH/Show+Job+Steps+by+sacct+and+srun+Commands
+# <jobid>.0 is first srun/mpirun job step
+# <jobid>.1 is second srun/mpirun job step
+# https://stackoverflow.com/questions/52447602/slurm-sacct-shows-batch-and-extern-job-names
+# Each job contains multiple job steps and each step is accounted for.
+# %j.batch accounts for the resources needed for the batch script
+# %j.extern accounts for all resource usage by the job outside of slurm (e.g., ssh)
+# %j is the overall job
+
+state = {
+'BF'  :'BOOT_FAIL',
+'CA'  :'CANCELLED',
+'CD'  :'COMPLETED',
+'DL'  :'DEADLINE',
+'F'   :'FAILED',
+'NF'  :'NODE_FAIL',
+'OOM' :'OUT_OF_MEMORY',
+'PD'  :'PENDING',
+'PR'  :'PREEMPTED',
+'R'   :'RUNNING',
+'RQ'  :'REQUEUED',
+'RS'  :'RESIZING',
+'RV'  :'REVOKED',
+'S'   :'SUSPENDED',
+'TO'  :'TIMEOUT'
+}
+state = dict(zip(state.values(), state.keys()))
+days = 2
 # sacct wants this format YYYY-MM-DD[THH:MM[:SS]]
-cmd = f"sacct -S {start_stamp} -u {netid} | egrep -v 'extern|batch|\.0 ' 2>/dev/null"
-output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
-lines = output.stdout.decode("utf-8").split('\n')
-if (len(lines) > 3):
-  print(f'sacct -u {netid} on {host}', '')
-  print('-' * width)
-  print(lines[0])
-  if len(lines) > 6: lines = lines[-6:]
-  print('\n'.join(lines))
-  # TODO column labels can display twice and "No jobs in last 24 hours"
-
-if verbose:
-  pass
-  # scontrol show reservation
+start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
+if (host == "tiger"):
+  frmt = 'jobid%20,start,state,ncpus,nnodes,partition,reqgres,jobname%20,reqtres%40'
+  cols = ['JOBID', 'START', 'ST', 'CORES', 'NODES', 'PART', 'reqgres', 'NAME', 'reqtres']
+else:
+  frmt = 'jobid%20,start,end,state,ncpus,nnodes,partition,jobname%20,reqtres%40'
+  cols = ['JOBID', 'START', 'ST', 'CORES', 'NODES', 'PART', 'NAME', 'reqtres']
+cmd = f"sacct -S {start} -u {netid} -o {frmt} -n | egrep -v '[0-9].extern |[0-9].batch |[0-9]\.[0-9] '"
+output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
+lines = output.stdout.split('\n')
+if lines[-1] == '': lines = lines[:-1]
+if (len(lines) == 0):
+  print(f"{gutter}No jobs in last 48 hours")
+else:
+  if (len(lines) > 2):
+    print(cols)
+    if len(lines) > 6: lines = lines[-6:]
+    for line in lines:
+      items = line.split()
+      # 2020-09-13T11:42:34
+      items[1] = datetime.strptime(items[1], "%Y-%m-%dT%H:%M:%S").strftime("%-m/%-d %H:%M")
+      items[2] = state[items[2]] if items[2] in state else items[2]
+      items[2] = '  ' + items[2]
+      items[2] = items[2][-3:]
+      items[3] = '  ' + items[3]
+      items[3] = items[3][-3:]
+      print(' '.join(items))
 
 # size of /home
 if disk:
@@ -793,7 +847,9 @@ if disk:
 # ps aux | grep netid -> what are they running on the head node
 # lsof
 
-# downtime
+##############
+## downtime ##
+##############
 def second_tues_of_month(year, month):
   import calendar
   c = calendar.Calendar(firstweekday=calendar.SUNDAY)
@@ -814,7 +870,7 @@ def previous_and_next_downtime_dates():
   dt = today - second_tues
 
   fmt = '%b %-d'
-  print("=" * width)
+  divider(f"{term.bold}Events{term.normal}", "")
   if dt.days >= 0:
     # downtime in current month is lower bound so get downtime next month
     month += 1
@@ -851,10 +907,58 @@ def previous_and_next_downtime_dates():
   else:
     nxt = f"({clr}{dt_upcoming.days} days ahead{term.normal}) {upcoming_tues}"
 
-  print(f"{gutter}{prv} --- Downtime --> {nxt}")
+  if (dt_previous.days <= 5 or dt_upcoming.days <= 9):
+    print(f"{gutter}{prv} --- Downtime --> {nxt}")
   return None
 
 _ = previous_and_next_downtime_dates()
+
+##################
+## reservations ##
+##################
+cmd = "scontrol show reservation"
+output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
+lines = output.stdout.split('\n')
+for line in lines:
+  # ReservationName=hpcr StartTime=2020-11-10T16:30:00 ...
+  if 'ReservationName=' in line and 'StartTime=' in line:
+    items = line.split()
+    if 'ReservationName=' in items[0]:
+      name = items[0].split("=")[1]
+      if 'StartTime=' in items[1]:
+        stime = items[1].split("=")[1]
+        when = datetime.strptime(stime, "%Y-%m-%dT%H:%M:%S").date()
+        today = datetime.today().date()
+        dt = when - today
+        if (dt.days <= 10):
+          print(f"{gutter}Reservation \"{name}\" in {dt.days} days on {stime}")
+
+############
+## events ##
+############
+def print_events(flnm, days_away=7):
+
+  if host == "adroit":
+    flnm = "/scratch/network/jdh4/python-utilities/.lft/" + flnm
+  elif host == "tigressdata":
+    flnm = "/tiger/scratch/gpfs/jdh4/python-devel/lft/" + flnm
+  else:
+    flnm = "/tigress/jdh4/python-devel/lft/" + flnm
+
+  if os.path.isfile(flnm):
+    with open(flnm, mode='r') as csv_file:
+      csv_reader = csv.DictReader(csv_file)
+      for row in csv_reader:
+        event = row["event"]
+        when = datetime.strptime(row["date"], "%m/%d/%Y").date()
+        today = datetime.today().date()
+        dt = when - today
+        if (dt.days <= days_away):
+          print(f"{gutter}{event} in {dt.days} days on {when}")
+  return None
+
+print_events("holidays.csv", days_away=10)
+print_events("rc_workshops.csv", days_away=2)
 
 print("")
 print("")
