@@ -22,9 +22,9 @@ lft is looking for trouble. Example usage:
      $ lft aturing
 
 Options:
-     -h  Show this help menu
      -v  Produce verbose output
      -d  Compute the size of /home using du -sh
+     -h  Show this help menu
 ```
 
 ## Notes for jdh4
