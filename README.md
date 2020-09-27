@@ -5,6 +5,14 @@ This command crawls the /home directory of a specified user and reports on their
 - it can find the true netid when given an alias (thanks to R. Knight)
 - identifies MATLAB users
 
+## How to use
+
+Add this line to your `.bashrc` file on each cluster (including Adroit and Tigressdata):
+
+```
+alias lft='/home/jdh4/bin/lft'
+```
+
 ## Installation
 
 Add these lines to .condarc:
