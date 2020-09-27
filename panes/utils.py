@@ -34,6 +34,17 @@ def print_packages(term, gutter, width, pkgs, red, green, max_chars=14):
     print(s)
   return None
 
+def remove_middle_initial(full_name):
+  parts = full_name.split()
+  cnt = len(parts)
+  if (cnt > 2):
+    for i in range(1, cnt - 1):
+      if (parts[i].endswith('.') and (len(parts[i]) == 2)) or len(parts[i]) == 1:
+        _ = parts.pop(i)
+      return ' '.join(parts)
+  else:
+    return full_name
+
 ##########################
 ## hostname translation ##
 ##########################

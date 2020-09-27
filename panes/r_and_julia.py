@@ -1,8 +1,8 @@
 import os
 from os.path import isdir
 from datetime import datetime
-import utils
-from utils import divider
+from panes import utils
+from panes.utils import divider
 
 ################
 ## R packages ##

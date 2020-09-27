@@ -17,9 +17,9 @@ from socket import gethostname
 from blessed import Terminal
 
 # self-written code
-import utils
-from utils import divider
-import dossier
+from panes import utils
+from panes.utils import divider
+from panes import dossier
 
 class StringBox(list):
   def __init__(self):
@@ -348,12 +348,13 @@ if home_exists:
     pass
   else:
     line = output.stdout.decode("utf-8")
-    shell = line.split(":")[-1].strip() if ":" in line else ""
-    red = ["/bin/csh", "/bin/zsh", "/bin/tcsh", "/usr/bin/zsh", "/bin/sh", "bin/ksh"]
-    if shell in red:
-      print(f"{gutter}    login shell: {term.bold}{term.red}{shell}{term.normal}")
-    if home_rx and os.path.isfile(f"/home/{netid}/.cshrc"):
-      print(f"{gutter}{term.bold}{term.red}~/.cshrc exists{term.normal}")
+    if line.count(":") > 0:
+      shell = line.split(":")[-1].strip() if ":" in line else ""
+      red = ["/bin/csh", "/bin/zsh", "/bin/tcsh", "/usr/bin/zsh", "/bin/sh", "bin/ksh"]
+      if shell in red:
+        print(f"{gutter}    login shell: {term.bold}{term.red}{shell}{term.normal}")
+      if home_rx and os.path.isfile(f"/home/{netid}/.cshrc"):
+        print(f"{gutter}{term.bold}{term.red}~/.cshrc exists{term.normal}")
 
 ####################
 ## sponsor_report ##
@@ -396,17 +397,6 @@ else:
   else:
     sponsor = None
 
-def remove_middle_initial(full_name):
-  parts = full_name.split()
-  cnt = len(parts)
-  if (cnt > 2):
-    for i in range(1, cnt - 1):
-      if (parts[i].endswith('.') and (len(parts[i]) == 2)) or len(parts[i]) == 1:
-        _ = parts.pop(i)
-      return ' '.join(parts)
-  else:
-    return full_name
-
 if sponsor:
   accounts = []
   cmd = "sponsor_report " + sponsor
@@ -420,7 +410,7 @@ if sponsor:
       if "Manager" in line and "has sponsored" in line:
         # Manager curt (Curtis W. Hillegas) has sponsored the following users
         sponsor_full_name = line.split('(')[1].split(')')[0]
-        sponsor_full_name = remove_middle_initial(sponsor_full_name)
+        sponsor_full_name = utils.remove_middle_initial(sponsor_full_name)
         with term.location():
           print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
       if 0 and netid in line and 'has accounts on' in line:
@@ -452,7 +442,7 @@ if 0:
 ############
 ## python ##
 ############
-import python as py
+from panes import python as py
 
 if home_exists and home_rx:
   py.python_packages(netid, evars, term, gutter, width, verbose)
@@ -460,7 +450,7 @@ if home_exists and home_rx:
 #################
 ## R and julia ##
 #################
-import r_and_julia as rj
+from panes import r_and_julia as rj
 
 if home_exists and home_rx:
   rj.r_packages(netid, evars, term, gutter, width, verbose)
@@ -488,7 +478,7 @@ if home_exists and home_rx and isdir(path):
 ###########################
 ## current and past jobs ##
 ###########################
-import jobs as jb
+from panes import jobs as jb
 
 if home_exists:
   shares = jb.sshare(term, gutter, host, netid)
@@ -510,7 +500,7 @@ if home_exists:
 ###############
 ## reminders ##
 ###############
-import reminders as rms
+from panes import reminders as rms
 
 downtime = rms.previous_and_next_downtime_dates(term, gutter)
 reservations = rms.get_reservations(term, gutter, days_away=10)

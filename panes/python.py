@@ -13,8 +13,8 @@
 import os
 from os.path import isdir
 from datetime import datetime
-import utils
-from utils import divider
+from panes import utils
+from panes.utils import divider
 
 def clean_python_packages(pkgs):
   noshow = ['lib', 'bin', '__pycache__', 'six', 'pasta', 'pip', 'wheel', \
