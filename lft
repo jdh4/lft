@@ -3,20 +3,23 @@
 # post issues to https://github.com/jdh4/lft
 # or write to halverson@princeton.edu
 
+# standard library
 import os
+from os.path import isdir
 import sys
-sys.path.append('/scratch/gpfs/jdh4/gpustat') # to find dossier
-sys.path.append('/tiger/scratch/gpfs/jdh4/gpustat') # to find dossier on tigressdata
-sys.path.append('/scratch/network/jdh4/gpustat') # to find dossier on adroit
-import math
 import subprocess
 from subprocess import PIPE as sPIPE
-from pathlib import Path
 from datetime import datetime
 from time import time
 from socket import gethostname
-from dossier import ldap_plus
+
+# conda environment
 from blessed import Terminal
+
+# self-written code
+import utils
+from utils import divider
+import dossier
 
 class StringBox(list):
   def __init__(self):
@@ -31,59 +34,6 @@ class StringBox(list):
     super().__setitem__(key, x)
     self.width = len(x) if len(x) > self.width else self.width
 
-def print_packages(pkgs, language, max_chars=15, columns=5):
-  language = language.lower()
-  if language == "python":
-    parallel = ['mpi4py', 'mpich', 'intel_openmp', 'dask', 'joblib', 'tbb']
-    gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba', 'jax']
-    green    = ['fenics', 'geopandas', 'tensorflow', 'tensorflow_gpu', \
-                'torch', 'pystan', 'jupyter', 'deepmd-kit']
-    red      = parallel + gpu
-  elif language == "r":
-    parallel = ['furrr', 'Rmpi', 'doMPI', 'future', 'caret', 'fastLink']
-    trouble  = ['sf', 'rstan', 'gurobi']
-    lock     = [pkg for pkg in pkgs if 'LOCK' in pkg]
-    green    = []
-    red      = parallel + trouble + lock
-  elif language == "julia":
-    green = ['Flux', 'GPUArrays', 'CUDAdrv', 'CUDAnative', 'CuArrays', \
-             'TensorFlow', 'Knet', 'ScikitLearn']
-    red = []
-  else:
-    green = []
-    red = []
- 
-  clr = []
-  for pkg in pkgs:
-    if pkg in green:
-      clr.append(f"{term.bold}{term.green}")
-    elif pkg in red:
-      clr.append(f"{term.bold}{term.red}")
-    else:
-      clr.append("")
-
-  rows = math.ceil(len(pkgs) / columns)
-  for i in range(rows):
-    s = gutter
-    for j in range(columns):
-      idx = j + columns * i
-      if idx >= len(pkgs): break
-      pkg = pkgs[idx]
-      if len(pkg) > max_chars - 1: pkg = pkg[:max_chars - 2] + '+ '
-      s += clr[idx] + pkg + term.normal + ' ' * (max_chars - len(pkg))
-    print(s)
-  return None
-
-def is_rx(path):
-  # true if permissions are rx or rwx for other
-  return oct(os.stat(path).st_mode)[-1] in ['5', '7']
-
-def divider(title, msg):
-  print("")
-  print(" " + title)
-  print("=" * width)
-  if (msg != ''): print(msg)
-
 ######################################
 ## evaluate command-line parameters ##
 ######################################
@@ -93,13 +43,13 @@ def print_help():
   print("     $ lft aturing")
   print("")
   print("Options:")
-  print("     -h  Show this help menu")
   print("     -v  Produce verbose output")
   print("     -d  Compute the size of /home using du -sh")
+  print("     -h  Show this help menu")
   print("")
   sys.exit(0)
 
-if (len(sys.argv) > 4):
+if (len(sys.argv) == 1 or len(sys.argv) > 4):
   print("")
   print("ERROR: Wrong number of command-line parameters.")
   print_help()
@@ -108,56 +58,49 @@ if ('-h' in sys.argv or '--help' in sys.argv):
 verbose = True if ('-v' in sys.argv) else False
 disk    = True if ('-d' in sys.argv) else False
 
-##############################
-## terminal and preferences ##
-##############################
+###############################
+## if __name__ == "__main__" ##
+###############################
+
+# check terminal size
 term = Terminal()
-width = 80
+width = 90
 gutter = ' '
 if (term.width < width):
   print(f"Terminal width too small ({term.width} < {width}). Exiting ...")
   sys.exit(0)
 
-###############################
-## if __name__ == "__main__" ##
-###############################
+# translate hostname (e.g., della5.princeton.edu -> della)
+hostname = gethostname().strip().lower()
+if (hostname not in utils.known_hosts):
+  print(f"{hostname} is unknown (see utils.py). Exiting ...")
+  sys.exit(0)
+host = utils.known_hosts[hostname]
+
+# ldapsearch
 username = sys.argv[1].strip()
-person = ldap_plus([username])
+person = dossier.ldap_plus([username])
 netid = person[1][9]
 if netid is None:
   print("")
-  print(f"{username} not found in Princeton LDAP. Exiting ...")
+  print(f"{username} not found in Princeton LDAP (or ldapsearch timed out). Exiting ...")
   print("")
   sys.exit(0)
 
-# check for existence and permissions of home directory
-home = '/home/' + netid
-if Path(home).is_dir():
+# check for existence and permissions of /home on local cluster
+home = f"/home/{netid}"
+if isdir(home):
   home_exists = True
-  if is_rx(home):
+  if utils.is_rx(home):
     home_rx = True
   else:
     home_rx = False
-    print(f"{home} is not accessible.")
 else:
   home_exists = False
   home_rx = False
-  print(f"{home} does not exist.")
 
-host = gethostname().lower()
-mach = {
-'tigercpu.princeton.edu':'tiger',
-'tigergpu.princeton.edu':'tiger',
-'della5.princeton.edu':'della',
-'perseus':'perseus',
-'traverse.princeton.edu':'traverse',
-'adroit4':'adroit',
-'tigressdata2.princeton.edu':'tigressdata'}
-if (host not in mach): print("WARNING: host not found.")
-host = mach[host]
-
+# clear terminal and print header
 print(term.home + term.clear)
-#message = f"{gutter}looking for trouble on {host} for {username}"
 message = f"{gutter}looking for trouble"
 now = datetime.today().strftime('%-I:%M %p (%b %-d)')
 num_spaces = width - len(message) - len(now) - len(gutter)
@@ -165,6 +108,11 @@ print("=" * width)
 print(f"{message}{' ' * num_spaces}{now}")
 print("=" * width)
 
+####################################
+## print LDAP info about the user ##
+####################################
+
+# netid, name, dept, position
 p = person[1]
 if p[9]:
  if netid == username:
@@ -176,8 +124,8 @@ print("  Groups:")
 print("    Dept:", p[1]) if p[1] else print("    Dept: unknown")
 print("Position:", p[3]) if p[3] else print("Position: unknown")
 
-# modification time of /home/<NetID>
-if Path(home).exists():
+# modification time of /home
+if isdir(home):
   mtime = datetime.fromtimestamp(os.stat(home).st_mtime)
   dt = datetime.today() - mtime
   if dt.days == 0:
@@ -198,35 +146,9 @@ else:
   print("  Active: N/A")
 print(" Sponsor:")
 
-bashrc_default="""
-# .bashrc
-
-# Source global definitions
-if [ -f /etc/bashrc ]; then
-        . /etc/bashrc
-fi
-
-# Uncomment the following line if you don't like systemctl's auto-paging feature:
-# export SYSTEMD_PAGER=
-
-# User specific aliases and functions
-""".split('\n')
-
-bash_profile_default = """
-# .bash_profile
-
-# Get the aliases and functions
-if [ -f ~/.bashrc ]; then
-        . ~/.bashrc
-fi
-
-# User specific environment and startup programs
-
-PATH=$PATH:$HOME/.local/bin:$HOME/bin
-
-export PATH
-""".split('\n')
-
+###############################
+## .bashrc and .bash_profile ##
+###############################
 def format_modules(module_lines):
   # convert lines with multiple modules to single lines
   # e.g., module load intel intel-mpi cudatoolkit
@@ -246,86 +168,83 @@ def remove_comments_and_white_space(lines):
   trans = str.maketrans('', '', ' \n\t\r')
   return ''.join(remove_comments).translate(trans)
 
-def analyze_startup_script(flnm, default):
-  global pythonpath
-  global miniconda
-  global anaconda
-  global rlibs
-  global rlibsuser
+def analyze_startup_script(flnm, default, evars):
   aliases = 0
   exports = 0
-  source = 0
   modules = []
-  path = home + '/' + flnm
+  path = f"/home/{netid}/{flnm}"
   if os.path.isfile(path):
     with open(path) as f:
       lines = f.readlines()
     startup_rm = remove_comments_and_white_space(lines)
     default_rm = remove_comments_and_white_space(default)
     if (startup_rm == default_rm):
-      sp = "      " if (flnm == '.bashrc') else ""
-      print(f"{gutter}{sp}~/{flnm}: default")
+      state = "default"
     else:
+      state = "custom"
       for line in lines:
-        if line.strip().startswith('#'): continue
-        line = line.strip().lower() # lower causes problem with dirs with caps
+        line = line.strip().lower()
+        if line.startswith('#'): continue # ignore comments
         if (line.startswith('module') and ('load' in line or 'add' in line) and \
           not 'alias' in line):
           modules.append(line)
-        # TODO remove comment checks
-        if ('alias' in line and not line.startswith('#')):
-          aliases += 1
-        if ('export' in line and not line.startswith('#')):
-          exports += 1
-        #if ('source' in line and not line.startswith('#')):
-        #  source += 1
-        if ('pythonpath' in line and not line.startswith('#')):
-          pythonpath=True
-        if 'miniconda' in line.lower() and 'path' in line.lower():
-          miniconda = True
-        if 'anaconda' in line.lower() and 'path' in line.lower():
-          anaconda = True
-        if 'r_libs' in line.lower() and 'export' in line.lower() and '_user' not in line.lower():
-          rlibs = True
-        if 'r_libs_user' in line.lower() and 'export' in line.lower():
-          rlibsuser = True
-      #print(f"{flnm} >> alias:{aliases}  export:{exports}  source:{source}")
-      if verbose:
-        print(f"{gutter}~/{flnm}: alias:{aliases}  export:{exports}")
-      else:
-        #pre = " " * 7 if flnm is ".bashrc" else " "
-        print(f"{gutter}~/{flnm}: custom")
-      if modules:
-        mods = format_modules(modules)
-        if verbose or len(mods) < 4:
-          for mod in mods:
-            print(f"{gutter}{term.bold}{term.red}{mod}{term.normal}")
-        else:
-          for mod in mods[:3]:
-            print(f"{gutter}{term.bold}{term.red}{mod}{term.normal}")
-          print(f"{gutter}{term.bold}{term.red}(plus {len(mods) - 3} more){term.normal}")
+        if ('alias' in line): aliases += 1
+        if ('export' in line): exports += 1
+        if 'miniconda' in line and 'path' in line:
+          evars['miniconda'] = True
+        if 'anaconda' in line and 'path' in line:
+          evars['anaconda'] = True
+        if ('pythonpath' in line):
+          evars['pythonpath'] = (True, flnm)
+        if 'r_libs' in line and 'export' in line and '_user' not in line:
+          evars['rlibs'] = (True, flnm)
+        if 'r_libs_user' in line and 'export' in line:
+          evars['rlibsuser'] = (True, flnm)
   else:
-    print(f"{gutter}{flnm}: does not exist")
+    state = "missing"
+  return (aliases, exports, modules, state, flnm)
 
-# .bashrc and .bash_profile
-#divider(f"{term.bold}Environment{term.normal} (cat /home/{netid}/.bashrc)", '')
-divider(f"{term.bold}Environment{term.normal}", '')
-pythonpath = False
-miniconda = False
-anaconda = False
-rlibs = False
-rlibsuser = False
+def print_with_modules(al, ex, modules, state, flnm):
+  term = Terminal()
+  print(f"{gutter}~/{flnm}: {state}")
+  if modules:
+    mods = format_modules(modules)
+    if verbose or len(mods) < 4:
+      for mod in mods:
+        print(f"{gutter}  {term.bold}{term.red}{mod}{term.normal}")
+    else:
+      for mod in mods[:3]:
+        print(f"{gutter}  {term.bold}{term.red}{mod}{term.normal}")
+      print(f"{gutter}  {term.bold}{term.red}(plus {len(mods) - 3} more){term.normal}")
+
+divider(f"{term.bold}Environment{term.normal}", '', gutter, width)
+
+evars = {}
+evars['miniconda'] = False
+evars['anaconda'] = False
+evars['pythonpath'] = (False, None)
+evars['rlibs'] = (False, None)
+evars['rlibsuser'] = (False, None)
+
 if not home_exists:
-  print(f"{home} does not exist")
+  print(f"{gutter}{home} does not exist")
 elif home_exists and not home_rx:
-  print(f"{home} is private")
+  print(f"{gutter}{home} is private")
 else:
-  analyze_startup_script('.bashrc', bashrc_default)
-  analyze_startup_script('.bash_profile', bash_profile_default)
+  rc = analyze_startup_script('.bashrc', utils.bashrc_default, evars)
+  bp = analyze_startup_script('.bash_profile', utils.bash_profile_default, evars)
+  if not rc[2] and not bp[2]:
+    print(f"{gutter}      ~/.bashrc: {rc[3]}")
+    print(f"{gutter}~/.bash_profile: {bp[3]}")
+  else:
+    print_with_modules(*rc)
+    print_with_modules(*bp)
 
-# filesystems
+#################
+## filesystems ##
+#################
 def public_or_private(path):
-  if is_rx(path):
+  if utils.is_rx(path):
     return f"{path}: public ({len(os.listdir(path))} items)"
   else:
     return f"{path}: private"
@@ -337,20 +256,20 @@ if is_cluster: # why do it this way? to distinguish from tigressdata?
   fs = StringBox()
 
   #path = '/home/' + netid
-  #if os.path.isdir(path) and not is_rx(path):
+  #if isdir(path) and not is_rx(path):
   #  fs.append(f"{path}: private")
 
   path = '/scratch/gpfs/' + netid
-  if os.path.isdir(path):
+  if isdir(path):
     fs.append(public_or_private(path))
 
   path = '/tigress/' + netid
-  if Path(path).is_dir():
+  if isdir(path):
     fs.append(public_or_private(path))
 
   if ('della' in host or 'adroit' in host):
     path = '/scratch/network/' + netid
-    if Path(path).is_dir():
+    if isdir(path):
       fs.append(public_or_private(path))
 
 # align filesystems on colon
@@ -429,9 +348,12 @@ if home_exists:
     pass
   else:
     line = output.stdout.decode("utf-8")
-    shell = line.split(":")[-1].strip() if ":" in line else None
-    clr = f"{term.bold}{term.red}" if shell in ["/bin/csh", "/bin/zsh"] else ""
-    print(f"Shell: {clr}{shell}{term.normal}")
+    shell = line.split(":")[-1].strip() if ":" in line else ""
+    red = ["/bin/csh", "/bin/zsh", "/bin/tcsh", "/usr/bin/zsh", "/bin/sh", "bin/ksh"]
+    if shell in red:
+      print(f"{gutter}    login shell: {term.bold}{term.red}{shell}{term.normal}")
+    if home_rx and os.path.isfile(f"/home/{netid}/.cshrc"):
+      print(f"{gutter}{term.bold}{term.red}~/.cshrc exists{term.normal}")
 
 ####################
 ## sponsor_report ##
@@ -527,460 +449,101 @@ if 0:
       pre = "*" if account in host else " "
       print(term.move_x(50) + pre + account)
 
-#      ___                                 ___           ___           ___     
-#     /  /\        ___         ___        /__/\         /  /\         /__/\    
-#    /  /::\      /__/|       /  /\       \  \:\       /  /::\        \  \:\   
-#   /  /:/\:\    |  |:|      /  /:/        \__\:\     /  /:/\:\        \  \:\  
-#  /  /:/~/:/    |  |:|     /  /:/     ___ /  /::\   /  /:/  \:\   _____\__\:\ 
-# /__/:/ /:/   __|__|:|    /  /::\    /__/\  /:/\:\ /__/:/ \__\:\ /__/::::::::\
-# \  \:\/:/   /__/::::\   /__/:/\:\   \  \:\/:/__\/ \  \:\ /  /:/ \  \:\~~\~~\/
-#  \  \::/       ~\~~\:\  \__\/  \:\   \  \::/       \  \:\  /:/   \  \:\  ~~~ 
-#   \  \:\         \  \:\      \  \:\   \  \:\        \  \:\/:/     \  \:\     
-#    \  \:\         \__\/       \__\/    \  \:\        \  \::/       \  \:\    
-#     \__\/                               \__\/         \__\/         \__\/    
+############
+## python ##
+############
+import python as py
 
-def clean_python_packages(pkgs):
-  noshow = ['lib', 'bin', '__pycache__', 'six', 'pasta', 'pip', 'wheel', \
-            'setuptools', 'pkgconfig', '_pytest']
-  pkgs_cleaned = []
-  for pkg in pkgs:
-    parts = pkg.split('-')
-    if len(parts) > 1 and parts[1][0].isalpha():
-      pkg_cleaned = '-'.join([parts[0], parts[1]])
-    else:
-      pkg_cleaned = parts[0]
-    pkgs_cleaned.append(pkg_cleaned)
-  return sorted(list(set(pkgs_cleaned) - set(noshow)), key=lambda p: p.lower())
+if home_exists and home_rx:
+  py.python_packages(netid, evars, term, gutter, width, verbose)
 
-def check_python(ppd):
-  global printed_python_divider
-  if not ppd:
-    divider(term.bold('Python'), '')
-    printed_python_divider = True
-  return None
+#################
+## R and julia ##
+#################
+import r_and_julia as rj
 
-versions = ['2.6', '2.7', '3.6', '3.7', '3.8']
-#frmt = "(%-m/%-d/%Y)"
-frmt = "(%b %Y)"
+if home_exists and home_rx:
+  rj.r_packages(netid, evars, term, gutter, width, verbose)
+  rj.julia_packages(netid, term, gutter, width, verbose)
 
-# conda TODO what if R within .conda
-printed_python_divider = False
-path = home + '/.conda'
-if home_exists and home_rx and os.path.isdir(path):
-  if is_rx(path):
-    path = home + '/.conda/envs'
-    if os.path.isdir(path):
-      if is_rx(path):
-        envs = os.listdir(path)
-        if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
-        for env in envs:
-          success_per_env = False
-          for version in versions:
-            path = f"{home}/.conda/envs/{env}/lib/python{version}/site-packages"
-            if os.path.isdir(path) and is_rx(path):
-              success_per_env = True
-              if verbose:
-                check_python(printed_python_divider)
-                mtime = datetime.fromtimestamp(os.stat(f"{home}/.conda/envs/{env}").st_mtime)
-                mtime = mtime.strftime(frmt)
-                print(f"     ~/.conda/envs/{term.bold}{env}{term.normal}/lib/python"
-                      f"{version}/site-packages {mtime}")
-                pkgs = os.listdir(path)
-                pkgs = [pkg for pkg in pkgs if os.path.isdir(os.path.join(path, pkg))]
-                pkgs = clean_python_packages(pkgs)
-                print_packages(pkgs, "python")
-                print('-' * width)
-              else:
-                check_python(printed_python_divider)
-                print(f"{gutter}~/.conda/envs/{term.bold}{env}{term.normal}")
-          if not success_per_env:
-            check_python(printed_python_divider)
-            print(f"{gutter}~/.conda/envs/{env}: exists")
-      else:
-        check_python(printed_python_divider)
-        print(f"{gutter}~/.conda/envs: private")
-  else:
-    check_python(printed_python_divider)
-    print(f"{gutter}~/.conda: private")
-
-# .local (pip install --user <package>)
-path = home + '/.local'
-if home_exists and home_rx and os.path.isdir(path) and is_rx(path):
-  for version in versions:
-    path = f"{home}/.local/lib/python{version}/site-packages"
-    if os.path.isdir(path):
-      if is_rx(path):
-        check_python(printed_python_divider)
-        if verbose:
-          print(f"     ~/.local/lib/{term.bold}python{version}{term.normal}/site-packages")
-          pkgs = os.listdir(path)
-          pkgs = [pkg for pkg in pkgs if os.path.isdir(path + '/' + pkg)]
-          pkgs = clean_python_packages(pkgs)
-          print_packages(pkgs, "python")
-          print('-' * width)
-        else:
-          print(f"{gutter}~/.local/lib/{term.bold}python{version}{term.normal}/site-packages")
-      else:
-        check_python(printed_python_divider)
-        print(f"{gutter}~/.local/lib/{term.bold}python{version}{term.normal}/site-packages (private)")
-        print('-' * width)
-else:
-  if printed_python_divider:
-    print(f"{gutter}~/.local does not exist")
-
-# .condarc
-path = home + '/.condarc'
-if home_exists and home_rx and os.path.isfile(path):
-  print(f"{gutter}{term.bold}{term.red}~/.condarc{term.normal}: yes")
-
-# .cache
-path = home + '/.cache'
-dot_cache = True if home_exists and home_rx and Path(path).exists() else False
-
-if pythonpath: print(f"{gutter}PYTHONPATH was set")
-if dot_cache and printed_python_divider: print(f"{gutter}~/.cache: yes")
-if anaconda: print("anaconda: yes")
-if miniconda: print("miniconda: yes")
-
-def clean_r_packages(pkgs):
-  noshow = []
-  return sorted(list(set(pkgs) - set(noshow)), key=lambda p: p.lower())
-
-# R packages
-printed_r_divider = False
-path = home + '/R'
-if home_exists and home_rx and os.path.isdir(path):
-  for version in ['3.3', '3.4', '3.5', '3.6', '4.0']:
-    path = home + f"/R/x86_64-redhat-linux-gnu-library/{version}"
-    if os.path.isdir(path):
-      if is_rx(path):
-        if not printed_r_divider:
-          divider(term.bold('R'), '')
-          printed_r_divider = True
-        pkgs = os.listdir(path)
-        pkgs = clean_r_packages(pkgs)
-        if verbose:
-          print(f"     ~/R/x86_64-redhat-linux-gnu-library/{term.bold}{version}{term.normal}")
-          print_packages(pkgs, "R", max_chars=13, columns=6)
-          print('-' * width)
-        else:
-          print(f"{gutter}~/R/x86_64-redhat-linux-gnu-library/{term.bold}{version}{term.normal}")
-      else:
-        print(f"{path} is private")
- 
-# R misc
-path = home + '/.R/Makevars'
-if printed_r_divider and (os.path.isfile(path) or rlibs or rlibsuser):
-  print("-" * width)
-  if os.path.isfile(path):
-    print(f"{term.bold}{term.red}{path} exists{term.normal}")
-  if rlibs: print("R_LIBS was set")
-  if rlibsuser: print("R_LIBS_USER was set")
-
-###########
-## julia ##
-###########
-path = home + '/.julia'
-if home_exists and home_rx and os.path.isdir(path):
-  path = home + '/.julia/packages'
-  if os.path.isdir(path):
-    if is_rx(path):
-      pkgs = os.listdir(path)
-      if pkgs:
-        if verbose:
-          divider(term.bold('Julia') + ' (~/.julia/packages)', '')
-          noshow = []
-          pkgs = sorted(list(set(pkgs) - set(noshow)), key=lambda p: p.lower())
-          print_packages(pkgs, "julia")
-        else:
-          divider(term.bold('Julia'), '')
-          print(f"{gutter}~/.julia/packages")
-    else:
-      divider(term.bold('Julia'), '')
-      print(f"{gutter}~/.julia/packages is private")
-
-# ~/.matlab
+############
+## matlab ##
+############
 path = home + '/.matlab'
-if home_exists and home_rx and Path(path).exists():
-  if is_rx(path):
-    divider(term.bold('MATLAB'), '')
+if home_exists and home_rx and isdir(path):
+  if utils.is_rx(path):
+    divider(term.bold('MATLAB'), '', gutter, width)
     # versions used via slurm or interactively
     versions_used = os.listdir(path)
-    print(' '.join(versions_used))
+    print(gutter + ' '.join(versions_used))
 
 # ondemand
 path = home + '/ondemand'
-if home_exists and home_rx and Path(path).exists():
-  if is_rx(path):
-    divider('ondemand', '')
-    if Path(path + '/data/sys/dashboard/batch_connect/sys/rstudio_server').exists():
+if home_exists and home_rx and isdir(path):
+  if utils.is_rx(path):
+    divider('ondemand', '', gutter, width)
+    if isdir(path + '/data/sys/dashboard/batch_connect/sys/rstudio_server'):
       print("Ondemand RStudio")
 
-#          _____                   _______                   _____                    _____          
-#         /\    \                 /::\    \                 /\    \                  /\    \         
-#        /::\    \               /::::\    \               /::\    \                /::\    \        
-#        \:::\    \             /::::::\    \             /::::\    \              /::::\    \       
-#         \:::\    \           /::::::::\    \           /::::::\    \            /::::::\    \      
-#          \:::\    \         /:::/~~\:::\    \         /:::/\:::\    \          /:::/\:::\    \     
-#           \:::\    \       /:::/    \:::\    \       /:::/__\:::\    \        /:::/__\:::\    \    
-#           /::::\    \     /:::/    / \:::\    \     /::::\   \:::\    \       \:::\   \:::\    \   
-#  _____   /::::::\    \   /:::/____/   \:::\____\   /::::::\   \:::\    \    ___\:::\   \:::\    \  
-# /\    \ /:::/\:::\    \ |:::|    |     |:::|    | /:::/\:::\   \:::\ ___\  /\   \:::\   \:::\    \ 
-#/::\    /:::/  \:::\____\|:::|____|     |:::|    |/:::/__\:::\   \:::|    |/::\   \:::\   \:::\____\
-#\:::\  /:::/    \::/    / \:::\    \   /:::/    / \:::\   \:::\  /:::|____|\:::\   \:::\   \::/    /
-# \:::\/:::/    / \/____/   \:::\    \ /:::/    /   \:::\   \:::\/:::/    /  \:::\   \:::\   \/____/ 
-#  \::::::/    /             \:::\    /:::/    /     \:::\   \::::::/    /    \:::\   \:::\    \     
-#   \::::/    /               \:::\__/:::/    /       \:::\   \::::/    /      \:::\   \:::\____\    
-#    \::/    /                 \::::::::/    /         \:::\  /:::/    /        \:::\  /:::/    /    
-#     \/____/                   \::::::/    /           \:::\/:::/    /          \:::\/:::/    /     
-#                                \::::/    /             \::::::/    /            \::::::/    /      
-#                                 \::/____/               \::::/    /              \::::/    /       
-#                                  ~~                      \::/____/                \::/    /        
-#                                                           ~~                       \/____/         
+###########################
+## current and past jobs ##
+###########################
+import jobs as jb
 
-print("\n " + term.bold("Jobs"))
-print("=" * width)
-
-# squeue
-if is_cluster:
-  cmd = "squeue -u " + netid
-  output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
-  lines = output.stdout.decode("utf-8").split('\n')
-  running = 0
-  pending = 0
-  qosmax = 0
-  reqnode = 0
-  for line in lines:
-    if (' R ' in line): running += 1
-    if (' PD ' in line): pending += 1
-    if (' QOSMax' in line): qosmax += 1
-    if ('ReqNodeNotAvail' in line): reqnode += 1
-  if (running or pending or qosmax or reqnode):
-    print(f"{gutter}Running: {running}   Pending: {pending}   QOSMax+: {qosmax}   ReqNodeNotAvail: {reqnode}")
-
-# sshare
-cmd = f"sshare -l -u {netid}"
-output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
-lines = output.stdout.decode("utf-8").split('\n')
-for i, line in enumerate(lines):
-  if ' ' + netid + ' ' in line and i != 0:
-    fairshare = f"{float(line.split()[7]):.2f}"
-    group = lines[i - 1].split()[0].upper()
-    normShares = float(lines[i - 1].split()[2])
-    normUsage  = float(lines[i - 1].split()[4])
-    if normShares == 0:
-      ratio = "100%"
-    else:
-      ratio = int(round(100 * normUsage / normShares, -1))
-      ratio = f"{ratio}%"
-    gshare = f"{round(100 * normShares)}%"
-    print(f"{gutter}Fairshare: {fairshare}   30-day {group} usage: {ratio}   {group} share of cluster: {gshare}")
-    # TODO red if extreme numbers
-print('-' * width)
-
-###########
-## sacct ##
-###########
-
-# https://wiki.hpcc.msu.edu/display/ITH/Show+Job+Steps+by+sacct+and+srun+Commands
-# <jobid>.0 is first srun/mpirun job step
-# <jobid>.1 is second srun/mpirun job step
-# https://stackoverflow.com/questions/52447602/slurm-sacct-shows-batch-and-extern-job-names
-# Each job contains multiple job steps and each step is accounted for.
-# %j.batch accounts for the resources needed for the batch script
-# %j.extern accounts for all resource usage by the job outside of slurm (e.g., ssh)
-# %j is the overall job
 if home_exists:
-  state = {
-  'BF'  :'BOOT_FAIL',
-  'CA'  :'CANCELLED',
-  'CD'  :'COMPLETED',
-  'DL'  :'DEADLINE',
-  'F'   :'FAILED',
-  'NF'  :'NODE_FAIL',
-  'OOM' :'OUT_OF_MEMORY',
-  'PD'  :'PENDING',
-  'PR'  :'PREEMPTED',
-  'R'   :'RUNNING',
-  'RQ'  :'REQUEUED',
-  'RS'  :'RESIZING',
-  'RV'  :'REVOKED',
-  'S'   :'SUSPENDED',
-  'TO'  :'TIMEOUT'
-  }
-  state = dict(zip(state.values(), state.keys()))
-  days = 2
-  # sacct wants this format YYYY-MM-DD[THH:MM[:SS]]
-  start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
-  if (host == "tiger"):
-    frmt = 'jobid%20,start,state,ncpus,nnodes,partition,reqgres,jobname%20,reqtres%40'
-    cols = ['JOBID', 'START', 'ST', 'CORES', 'NODES', 'PART', 'reqgres', 'NAME', 'reqtres']
-  else:
-    frmt = 'jobid%20,start,end,state,ncpus,nnodes,partition,jobname%20,reqtres%40'
-    cols = ['JOBID', 'START', 'ST', 'CORES', 'NODES', 'PART', 'NAME', 'reqtres']
-  cmd = f"sacct -S {start} -u {netid} -o {frmt} -n | egrep -v '[0-9].extern |[0-9].batch |[0-9]\.[0-9] '"
-  output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
-  lines = output.stdout.split('\n')
-  if lines[-1] == '': lines = lines[:-1]
-  if (len(lines) == 0):
-    print(f"{gutter}No jobs in last 48 hours")
-  else:
-    try:
-      if (len(lines) > 2):
-        print(cols)
-        if len(lines) > 6: lines = lines[-6:]
-        for line in lines:
-          items = line.split()
-          # 2020-09-13T11:42:34
-          items[1] = datetime.strptime(items[1], "%Y-%m-%dT%H:%M:%S").strftime("%-m/%-d %H:%M")
-          items[2] = state[items[2]] if items[2] in state else items[2]
-          items[2] = '  ' + items[2]
-          items[2] = items[2][-3:]
-          items[3] = '  ' + items[3]
-          items[3] = items[3][-3:]
-          print(' '.join(items))
-    except:
-      print("Misformatted sacct output found. Recovering ...")
-
-# size of /home
-if disk:
-  try:
-    cmd = "du -sh /home/" + netid + " 2>/dev/null"
-    output = subprocess.run(cmd, capture_output=True, shell=True, timeout=15)
-    lines = output.stdout.decode("utf-8").split('\n')
-    divider('size of /home on ' + host, '')
-    print(lines[0].split('\t')[0])
-  except subprocess.TimeoutExpired:
-    divider('size of /home', '')
-    print('du took too long')
-  except:
-    divider('size of /home', '')
-    print("du failed so no info")
+  shares = jb.sshare(term, gutter, host, netid)
+  jobs = jb.squeue(gutter, host, netid)
+  if shares or jobs:
+    divider(f"{term.bold}Jobs{term.normal}", "", gutter, width)
+    for share in shares:
+      print(share)
+    if jobs: print(jobs)
+  if lines: print('-' * width)
+  lines = jb.sacct(gutter, host, netid)
+  for line in lines:
+    print(line)
 
 # .ssh
 # .Xauthority
 # .allinea
-# if tiger in host or tigressdata: checkgpu -u 
-# add university vacation days and RC workshops
-# ps aux | grep netid -> what are they running on the head node
-# lsof
 
-##############
-## downtime ##
-##############
-def second_tues_of_month(year, month):
-  import calendar
-  c = calendar.Calendar(firstweekday=calendar.SUNDAY)
-  monthcal = c.monthdatescalendar(year, month)
-  all_tues_of_month = [day for week in monthcal for day in week if \
-                       day.weekday() == calendar.TUESDAY and \
-                       day.month == month]
-  second_tues = all_tues_of_month[1]
-  return second_tues
+###############
+## reminders ##
+###############
+import reminders as rms
 
-def previous_and_next_downtime_dates():
-  '''Display days from/to the previous/next downtime and dates'''
-  today = datetime.today().date()
-  year = today.year
-  month = today.month
+downtime = rms.previous_and_next_downtime_dates(term, gutter)
+reservations = rms.get_reservations(term, gutter, days_away=10)
+reminders = rms.get_reminders(term, gutter, "holidays.csv", host, days_away=10)
+reminders.extend(rms.get_reminders(term, gutter, "rc_workshops.csv", host, days_away=3))
 
-  second_tues = second_tues_of_month(year, month)
-  dt = today - second_tues
+if downtime or reservations or reminders:
+  divider(f"{term.bold}Reminders{term.normal}", "", gutter, width)
+  if downtime:
+    print(downtime)
+  if reservations:
+    for r in reservations:
+      print(r)
+  if reminders:
+    for r in reminders:
+      print(r)
 
-  fmt = '%b %-d'
-  divider(f"{term.bold}Reminders{term.normal}", "")
-  if dt.days >= 0:
-    # downtime in current month is lower bound so get downtime next month
-    month += 1
-    month, year = (1, year + 1) if month == 13 else (month, year)
-    previous_tues = second_tues
-    upcoming_tues = second_tues_of_month(year, month)
-  else:
-    # downtime in current month is upper bound so get downtime previous month
-    month -= 1
-    month, year = (12, year - 1) if month == 0 else (month, year)
-    previous_tues = second_tues_of_month(year, month)
-    upcoming_tues = second_tues
-
-  dt_previous = today - previous_tues
-  dt_upcoming = upcoming_tues - today
-  previous_tues = previous_tues.strftime(fmt)
-  upcoming_tues = upcoming_tues.strftime(fmt)
-
-  # format previous downtime
-  clr = f"{term.bold}{term.red}" if dt_previous.days <= 3 else ""
-  if dt_previous.days == 0:
-    prv = f"{previous_tues} ({clr}today{term.normal})"
-  elif dt_previous.days == 1:
-    prv = f"{previous_tues} ({clr}yesterday{term.normal})"
-  else:
-    prv = f"{previous_tues} ({clr}{dt_previous.days} days ago{term.normal})"
-
-  # format upcoming downtime
-  clr = f"{term.bold}{term.red}" if dt_upcoming.days <= 7 else ""
-  if dt_upcoming.days == 0:
-    nxt = f"({clr}today{term.normal}) {upcoming_tues}"
-  elif dt_upcoming.days == 1:
-    nxt = f"({clr}tomorrow{term.normal}) {upcoming_tues}"
-  else:
-    nxt = f"({clr}{dt_upcoming.days} days ahead{term.normal}) {upcoming_tues}"
-
-  if (dt_previous.days <= 5 or dt_upcoming.days <= 9):
-    print(f"{gutter}{prv} --- Downtime --> {nxt}")
-  return None
-
-_ = previous_and_next_downtime_dates()
-
-##################
-## reservations ##
-##################
-cmd = "scontrol show reservation"
-output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
-lines = output.stdout.split('\n')
-for line in lines:
-  # ReservationName=hpcr StartTime=2020-11-10T16:30:00 ...
-  if 'ReservationName=' in line and 'StartTime=' in line:
-    items = line.split()
-    if 'ReservationName=' in items[0]:
-      name = items[0].split("=")[1]
-      if 'StartTime=' in items[1]:
-        stime = items[1].split("=")[1]
-        when = datetime.strptime(stime, "%Y-%m-%dT%H:%M:%S").date()
-        today = datetime.today().date()
-        dt = when - today
-        if (dt.days <= 10):
-          print(f"{gutter}Reservation \"{name}\" in {dt.days} days on {stime}")
-
-############
-## events ##
-############
-def print_events(flnm, days_away=7):
-  if host == "adroit":
-    flnm = "/scratch/network/jdh4/python-utilities/.lft/" + flnm
-  elif host == "tigressdata":
-    flnm = "/tiger/scratch/gpfs/jdh4/python-devel/lft/" + flnm
-  else:
-    flnm = "/tigress/jdh4/python-devel/lft/" + flnm
-
-  if os.path.isfile(flnm):
-    with open(flnm, mode='r') as csv_file:
-      csv_reader = csv.DictReader(csv_file)
-      for row in csv_reader:
-        event = row["event"]
-        when = datetime.strptime(row["date"], "%m/%d/%Y").date()
-        today = datetime.today().date()
-        dt = when - today
-        if (0 < dt.days <= days_away):
-          if (dt.days == 0):
-            print(f"{gutter}{event} is {term.bold}{term.red}today{term.normal}")
-          elif (dt.days == 1):
-            print(f"{gutter}{event} is {term.bold}{term.red}tomorrow{term.normal}")
-          else:
-            print(f"{gutter}{event} in {dt.days} days on {when}")
-  return None
-
-print_events("holidays.csv", days_away=10)
-print_events("rc_workshops.csv", days_away=2)
+###################
+## size of /home ##
+###################
+if home_exists and home_rx and disk:
+  try:
+    cmd = "du -sh /home/" + netid + " 2>/dev/null"
+    output = subprocess.run(cmd, capture_output=True, shell=True, timeout=15)
+    lines = output.stdout.decode("utf-8").split('\n')
+    divider('size of /home on ' + host, '', gutter, width)
+    print(lines[0].split('\t')[0])
+  except subprocess.TimeoutExpired:
+    divider(f"{term.bold}size of /home{term.normal}", "", gutter, width)
+    print('du took too long')
+  except:
+    divider(f"{term.bold}size of /home{term.normal}", "", gutter, width)
+    print("du failed so no info")
 
 print("")
 print("")

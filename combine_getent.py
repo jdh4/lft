@@ -2,6 +2,9 @@
 # different clusters. Adroit is handled as a special case since
 # it does not contain name_sponsor info for most users.
 
+# The number of entries in the resulting file should be aggressively
+# minimized to speed-up the search. Right now it is too long.
+
 import pandas as pd
 #pd.set_option('display.max_rows', 5000)
 
@@ -78,6 +81,8 @@ df.columns = ['netid', 'sym', 'uid', 'gid', 'name_sponsor', \
               'home', 'login', 'cluster']
 
 # clean the dataframe
+no_shell = ['/sbin/halt', '/sbin/nologin', '/sbin/nolgin', '/sbin/shutdown', '/bin/sync']
+df = df[~df.login.isin(no_shell)]
 df = df[['netid', 'name_sponsor', 'home', 'cluster']]
 df = df[df.name_sponsor.notna() & df.name_sponsor.str.contains(',')]
 df = df[df.home.str.contains('/home/', regex=False)]
