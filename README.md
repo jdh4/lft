@@ -7,7 +7,7 @@ This command crawls the /home directory of a specified user and reports on their
 
 ## How to use
 
-Add this line to your `.bashrc` file on each cluster (including Adroit and Tigressdata):
+Add this line to your `.bashrc` file on each cluster (including Adroit and Tigressdata) and reload:
 
 ```
 alias lft='/home/jdh4/bin/lft'
