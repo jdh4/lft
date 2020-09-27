@@ -13,6 +13,20 @@ Add this line to your `.bashrc` file on each cluster (including Adroit and Tigre
 alias lft='/home/jdh4/bin/lft'
 ```
 
+To get started look at the help menu:
+
+```
+$ lft -h
+
+lft is looking for trouble. Example usage:
+     $ lft aturing
+
+Options:
+     -h  Show this help menu
+     -v  Produce verbose output
+     -d  Compute the size of /home using du -sh
+```
+
 ## Notes for jdh4
 
 Add these lines to .condarc:
