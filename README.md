@@ -43,7 +43,7 @@ $ module load anaconda3
 $ conda create --name terminal-env --channel conda-forge blessed -y
 ```
 
-On Traverse:
+Or on Traverse:
 
 ```
 $ module load anaconda3
