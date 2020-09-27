@@ -89,7 +89,7 @@ def get_reservations(term, gutter, days_away=7):
           when = datetime.strptime(stime, "%Y-%m-%dT%H:%M:%S").date()
           today = datetime.today().date()
           dt = when - today
-          if (dt.days <= days_away):
+          if (0 < dt.days <= days_away):
             if (dt.days == 0):
               res.append(f"{gutter}Reservation \"{name}\" is {term.bold}{term.red}today{term.normal}")
             elif (dt.days == 1):

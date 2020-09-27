@@ -319,9 +319,9 @@ import csv
 if host == "adroit":
   flnm = "/scratch/network/jdh4/python-utilities/.lft/combined_ls.csv"
 elif host == "tigressdata":
-  flnm = "/tiger/scratch/gpfs/jdh4/python-devel/lft/combined_ls.csv"
+  flnm = "/tiger/scratch/gpfs/jdh4/python-devel/lft/cron/combined_ls.csv"
 else:
-  flnm = "/tigress/jdh4/python-devel/lft/combined_ls.csv"
+  flnm = "/tigress/jdh4/python-devel/lft/cron/combined_ls.csv"
 with open(flnm, mode='r') as csv_file:
   csv_reader = csv.DictReader(csv_file)
   next(csv_reader)

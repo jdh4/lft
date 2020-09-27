@@ -167,11 +167,9 @@ def sacct(gutter, host, netid, days=3):
   state = dict(zip(state.values(), state.keys()))
   # sacct format is YYYY-MM-DD[THH:MM[:SS]]
   start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
-  if (host == "tiger"):
-    # sacct -u hzerze -S 09/24 -o jobid%20,start,end,state,jobname%20,reqtres%40
-    frmt = 'jobid%20,state,start,elapsed,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8'
-  else:
-    frmt = 'jobid%20,start,end,state,ncpus,nnodes,partition,jobname%8,reqtres%40'
+  #if (host == "tiger"):
+  # sacct -u hzerze -S 09/24 -o jobid%20,start,end,state,jobname%20,reqtres%40
+  frmt = 'jobid%20,state,start,elapsed,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8'
   cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p | egrep -v '[0-9].extern|[0-9].batch|[0-9]\.[0-9]\|'"
   output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
   lines = output.stdout.split('\n')
