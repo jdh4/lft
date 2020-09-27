@@ -13,7 +13,7 @@ Add this line to your `.bashrc` file on each cluster (including Adroit and Tigre
 alias lft='/home/jdh4/bin/lft'
 ```
 
-## Installation
+## Notes for jdh4
 
 Add these lines to .condarc:
 
