@@ -72,7 +72,7 @@ def python_packages(netid, evars, term, gutter, width, verbose):
                   pkgs = os.listdir(path)
                   pkgs = [pkg for pkg in pkgs if isdir(os.path.join(path, pkg))]
                   pkgs = clean_python_packages(pkgs)
-                  utils.print_packages(term, gutter, width, pkgs, red, green)
+                  utils.print_packages(term, gutter, width, pkgs, red, green, max_chars=13)
                   print_single = True
                 else:
                   printed_divider = check_python(printed_divider, term, gutter, width)
@@ -102,7 +102,7 @@ def python_packages(netid, evars, term, gutter, width, verbose):
             pkgs = os.listdir(path)
             pkgs = [pkg for pkg in pkgs if isdir(path + '/' + pkg)]
             pkgs = clean_python_packages(pkgs)
-            utils.print_packages(term, gutter, width, pkgs, red, green)
+            utils.print_packages(term, gutter, width, pkgs, red, green, max_chars=13)
             print_single = True
           else:
             print(f"{gutter}~/.local/lib/{term.bold}python{version}{term.normal}/site-packages")
@@ -113,8 +113,12 @@ def python_packages(netid, evars, term, gutter, width, verbose):
           print(f"{gutter}~/.local/lib/{term.bold}python{version}{term.normal}/site-packages (private)")
           print_single = True
 
-  # .local does not exist
-  dot_local = True if not isdir(f"/home/{netid}/.local") else False
+  # .local does not exist or is private
+  path = f"/home/{netid}/.local"
+  dot_local_exists = True if isdir(path) else False
+  dot_local_private = False # TODO ugly
+  if dot_local_exists:
+    dot_local_private = True if not utils.is_rx(path) else False
 
   path = f"/home/{netid}/.condarc"
   condarc = True if os.path.isfile(path) else False
@@ -127,13 +131,38 @@ def python_packages(netid, evars, term, gutter, width, verbose):
   anaconda = evars['anaconda']
   miniconda = evars['miniconda']
 
-  if dot_local or condarc or pythonpath[0] or anaconda or miniconda:
+  opath = f"/home/{netid}/ondemand/data/sys/dashboard/batch_connect/sys/jupyter"
+  ondemand = isdir(opath) and utils.is_rx(opath)
+
+  if not dot_local_exists or dot_local_private or condarc or pythonpath[0] or anaconda or miniconda or ondemand:
     printed_divider = check_python(printed_divider, term, gutter, width)
     if print_single and printed_divider: print('-' * width)
 
-    if dot_local: print(f"{gutter}~/.local does not exist")
+    if not dot_local_exists:
+      print(f"{gutter}~/.local (does not exist)")
+    elif dot_local_private:
+      print(f"{gutter}~/.local (private)")
     if condarc: print(f"{gutter}{term.bold}{term.red}~/.condarc{term.normal}")
     if pythonpath[0]: print(f"{gutter}PYTHONPATH set in ~/{pythonpath[1]}")
     if anaconda: print(f"{gutter}anaconda: yes")
     if miniconda: print(f"{gutter}miniconda: yes")
     #if dot_cache and printed_divider: print(f"{gutter}~/.cache")
+    if ondemand:
+      today = datetime.today().date()
+      year = today.year
+      month = today.month
+      opath = f"/home/{netid}/.jupyter"
+      if not isdir(opath):
+        print(f"{gutter}.jupyter not found")
+        return None
+      mtime = datetime.fromtimestamp(os.stat(opath).st_mtime)
+      if mtime.date() == today:
+        print(f"{gutter}OnDemand Jupyter (today)")
+      elif mtime.year == today.year:
+        frmt = "(%b %d)"
+        mtime = mtime.strftime(frmt)
+        print(f"{gutter}OnDemand Jupyter {mtime}")
+      else:
+        frmt = "(%b %d %Y)"
+        mtime = mtime.strftime(frmt)
+        print(f"{gutter}OnDemand Jupyter {mtime}")

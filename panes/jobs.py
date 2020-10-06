@@ -7,6 +7,7 @@ from subprocess import PIPE as sPIPE
 ## sshare ##
 ############
 def sshare(term, gutter, host, netid):
+  # TODO looks like molbio has 6% of traverse
   """Return fairshare, group usage and group cluster share"""
   cmd = f"sshare -l -u {netid}"
   output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
@@ -41,16 +42,22 @@ def squeue(gutter, host, netid):
     lines = output.stdout.decode("utf-8").split('\n')
     running = 0
     pending = 0
+    priority = 0
+    dependency = 0
     qosmax = 0
     reqnode = 0
     for line in lines:
       if (' R ' in line): running += 1
       if (' PD ' in line): pending += 1
+      if (' (Priority) ' in line): priority += 1
+      if (' (Dependency) ' in line): dependency += 1
       if (' QOSMax' in line): qosmax += 1
       if ('ReqNodeNotAvail' in line): reqnode += 1
-    if (running or pending or qosmax or reqnode):
-      return (f"{gutter}Running: {running}   Pending: {pending}   QOSMax+: {qosmax}"
-              f"   ReqNodeNotAvail: {reqnode}")
+    if (running or pending):
+      if pending:
+        return (f"{gutter}Running: {running}   Pending: {pending} (Priority:{priority}, Dependency:{dependency}, QOSMax+:{qosmax}, ReqNodeNotAvail: {reqnode})")
+      else:
+        return (f"{gutter}Running: {running}   Pending: {pending}")
     else:
       return ""
   else:
@@ -74,25 +81,25 @@ def format_elapsed_time(x):
   if x.count(":") == 1:
     minutes, seconds = map(int, x.split(":"))
     if minutes > 0:
-      return f"{round(minutes + seconds / 60)} min"
+      return f"{round(minutes + seconds / 60)}min"
     else:
-      return f"{seconds} sec"
+      return f"{seconds}sec"
   elif x.count(":") == 2 and "-" not in x:
     hours, minutes, seconds = map(int, x.split(":"))
     if (hours + minutes + seconds == 0):
-      return "0 sec"
+      return "0sec"
     elif (hours + minutes == 0):
-      return f"{seconds} sec"
+      return f"{seconds}sec"
     elif (hours == 0):
-      return f"{round(minutes + seconds / 60)} min"
+      return f"{round(minutes + seconds / 60)}min"
     elif (hours == 1):
-      return f"{round(60 + minutes + seconds / 60)} min"
+      return f"{round(60 + minutes + seconds / 60)}min"
     else:
-      return f"{round(hours + minutes / 60 + seconds / 3600)} hrs"
+      return f"{round(hours + minutes / 60 + seconds / 3600)}hrs"
   elif x.count(":") == 2 and "-" in x:
     days = int(x.split("-")[0])
     hours, minutes, seconds = map(int, x.split("-")[1].split(":"))
-    return f"{round(24 * days + hours + minutes / 60 + seconds / 3600)} hrs"
+    return f"{round(24 * days + hours + minutes / 60 + seconds / 3600)}hrs"
   else:
     return " -- "
 
@@ -101,14 +108,18 @@ def format_start(x):
     return x
   else:
     try:
-      start = datetime.strptime(x, "%Y-%m-%dT%H:%M:%S").strftime("%m/%d %H:%M")
+      start = datetime.strptime(x, "%Y-%m-%dT%H:%M:%S").strftime("%m/%d-%H:%M")
     except:
       return "--"
     else:
       return start
 
 def format_memory(x):
-  return x.replace("4000Mc", "4Gc").replace("Mc", " Mc").replace("Gc", " Gc").replace("Gn", " Gn")
+  return x.replace("000Gn", "T/N").replace("000Gc", "T/c") \
+          .replace("000Mn", "G/N") \
+          .replace("000Mc", "G/c") \
+          .replace("Gn", "G/N") \
+          .replace("Mc", "M/c").replace("Gc", "G/c")
 
 def format_state(x, state):
   x = "CANCELLED" if "CANCELLED" in x else x
@@ -116,7 +127,7 @@ def format_state(x, state):
 
 def align_columns(rows, cols, max_width, gutter):
   trans = {'jobid':'JobID ', 'jobname':'Name  ', 'state':'ST', 'start':'Start   ', \
-           'elapsed':'Elap ', 'partition':'Prt', 'ncpus':'n', 'nnodes':'N', \
+           'elapsed':'Elap', 'partition':'Prt', 'ncpus':'c', 'nnodes':'N', \
            'reqmem':'Mem ', 'timelimit':'limit'}
   abbr = [trans[col] if col in trans else col for col in cols]
 
@@ -168,18 +179,18 @@ def sacct(gutter, host, netid, days=3):
   # sacct format is YYYY-MM-DD[THH:MM[:SS]]
   start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
   #if (host == "tiger"):
-  # sacct -u hzerze -S 09/24 -o jobid%20,start,end,state,jobname%20,reqtres%40
+  # sacct -u hzerze -S 09/24 -o jobid%20,state,start,elapsed,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8
+  #frmt = 'jobid%20,state,start,elapsed,elapsedraw,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8,cputimeraw,maxrss'
   frmt = 'jobid%20,state,start,elapsed,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8'
   cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p | egrep -v '[0-9].extern|[0-9].batch|[0-9]\.[0-9]\|'"
   output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
   lines = output.stdout.split('\n')
  
-  # avoid dependency on pandas (and slow startup) by using namedtuple
+  # avoid dependency on pandas and its slow startup by using namedtuple
   from collections import namedtuple
   columns = [col.split('%')[0] for col in frmt.split(",")]
   Job = namedtuple("Job", columns)
   #breakpoint()
-  max_width = dict(zip(columns, [0] * len(columns)))
   sct = []
   if lines[-1] == '': lines = lines[:-1]
   if (len(lines) == 0):
@@ -188,6 +199,7 @@ def sacct(gutter, host, netid, days=3):
     try:
       if (len(lines) > 1):
         if len(lines) > 10: lines = lines[-10:]
+        max_width = dict(zip(columns, [0] * len(columns)))
         for line in lines:
           items = line.split("|")[:-1]
           #print(items)

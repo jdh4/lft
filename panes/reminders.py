@@ -119,7 +119,8 @@ def get_reminders(term, gutter, flnm, host, days_away=7):
         when = datetime.strptime(row["date"], "%m/%d/%Y").date()
         today = datetime.today().date()
         dt = when - today
-        if (0 < dt.days <= days_away):
+        # TODO sort by date all reminders
+        if (0 <= dt.days <= days_away):
           if (dt.days == 0):
             reminders.append(f"{gutter}{event} is {term.bold}{term.red}today{term.normal}")
           elif (dt.days == 1):

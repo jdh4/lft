@@ -45,6 +45,7 @@ def print_help():
   print("Options:")
   print("     -v  Produce verbose output")
   print("     -d  Compute the size of /home using du -sh")
+  print("     -q  Quick mode (ignore sponsor)")
   print("     -h  Show this help menu")
   print("")
   sys.exit(0)
@@ -57,6 +58,7 @@ if ('-h' in sys.argv or '--help' in sys.argv):
   print_help()
 verbose = True if ('-v' in sys.argv) else False
 disk    = True if ('-d' in sys.argv) else False
+spon    = True if ('-s' in sys.argv) else False
 
 ###############################
 ## if __name__ == "__main__" ##
@@ -64,7 +66,7 @@ disk    = True if ('-d' in sys.argv) else False
 
 # check terminal size
 term = Terminal()
-width = 90
+width = 85
 gutter = ' '
 if (term.width < width):
   print(f"Terminal width too small ({term.width} < {width}). Exiting ...")
@@ -144,7 +146,7 @@ if isdir(home):
       print(f"  Active: {dt.days} days ago ({mtime.strftime('%-m/%-d/%Y')})")
 else:
   print("  Active: N/A")
-print(" Sponsor:")
+if spon: print(" Sponsor:")
 
 ###############################
 ## .bashrc and .bash_profile ##
@@ -284,10 +286,13 @@ if not home_exists or not home_rx: print("\n" * fs.height)
 # print filesystems
 with term.location():
   if len(fs):
-    print(term.move_xy(width - fs.width - len(gutter), 12) + term.bold('Filesystems'))
+    if spon:
+      print(term.move_xy(width - fs.width - len(gutter), 12) + term.bold('Filesystems'))
+    else:
+      print(term.move_xy(width - fs.width - len(gutter), 11) + term.bold('Filesystems'))
     for i in range(fs.height):
       xc = width - fs.width - len(gutter)
-      yc = 14 + i
+      yc = 14 + i if spon else 13 + i
       if 'home' in fs[i]:
         print(term.move_xy(xc, yc) + term.red + term.bold + fs[i] + term.normal)
       else:
@@ -378,46 +383,46 @@ if home_exists:
 #      gascione (George Ascione) has accounts on eddy
 
 # Cluster eddy has these users gascione
-
-cmd = "sponsor_report " + netid
-try:
-  output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
-except subprocess.TimeoutExpired:
-  #print("sponsor_report timed out looking for", netid)
-  sponsor = None
-except:
-  # netid not in Princeton LDAP
-  sponsor = None
-else:
-  lines = output.stdout.decode("utf-8").split('\n')
-  if len(lines) > 1 and 'No sponsored users' in lines[0]:
-    sponsor = lines[1].split()[-1]
-  elif "Manager" in lines[0] and "has sponsored" in lines[0]:
-    sponsor = netid
-  else:
-    sponsor = None
-
-if sponsor:
-  accounts = []
-  cmd = "sponsor_report " + sponsor
+if spon:
+  cmd = "sponsor_report " + netid
   try:
     output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
+  except subprocess.TimeoutExpired:
+    #print("sponsor_report timed out looking for", netid)
+    sponsor = None
   except:
-    pass
+    # netid not in Princeton LDAP
+    sponsor = None
   else:
     lines = output.stdout.decode("utf-8").split('\n')
-    for line in lines:
-      if "Manager" in line and "has sponsored" in line:
-        # Manager curt (Curtis W. Hillegas) has sponsored the following users
-        sponsor_full_name = line.split('(')[1].split(')')[0]
-        sponsor_full_name = utils.remove_middle_initial(sponsor_full_name)
-        with term.location():
-          print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
-      if 0 and netid in line and 'has accounts on' in line:
-        # jdh4 (Jonathan D. Halverson) has accounts on della, perseus, tiger, traverse
-        accounts = line.split('has accounts')[-1].replace(',', '').split()[1:]
-        if 'mcmillan' in accounts: accounts.remove('mcmillan')
-        if 'eddy' in accounts: accounts.remove('eddy')
+    if len(lines) > 1 and 'No sponsored users' in lines[0]:
+      sponsor = lines[1].split()[-1]
+    elif "Manager" in lines[0] and "has sponsored" in lines[0]:
+      sponsor = netid
+    else:
+      sponsor = None
+
+  if sponsor:
+    accounts = []
+    cmd = "sponsor_report " + sponsor
+    try:
+      output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
+    except:
+      pass
+    else:
+      lines = output.stdout.decode("utf-8").split('\n')
+      for line in lines:
+        if "Manager" in line and "has sponsored" in line:
+          # Manager curt (Curtis W. Hillegas) has sponsored the following users
+          sponsor_full_name = line.split('(')[1].split(')')[0]
+          sponsor_full_name = utils.remove_middle_initial(sponsor_full_name)
+          with term.location():
+            print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
+        if 0 and netid in line and 'has accounts on' in line:
+          # jdh4 (Jonathan D. Halverson) has accounts on della, perseus, tiger, traverse
+          accounts = line.split('has accounts')[-1].replace(',', '').split()[1:]
+          if 'mcmillan' in accounts: accounts.remove('mcmillan')
+          if 'eddy' in accounts: accounts.remove('eddy')
 
 if 0:
   # check for account adroit and tigressdata (use threading while sponsorreport runs)
@@ -443,7 +448,7 @@ if 0:
 ## python ##
 ############
 from panes import python as py
-
+# TODO look in .condarc to know where to search for envs
 if home_exists and home_rx:
   py.python_packages(netid, evars, term, gutter, width, verbose)
 
@@ -467,14 +472,6 @@ if home_exists and home_rx and isdir(path):
     versions_used = os.listdir(path)
     print(gutter + ' '.join(versions_used))
 
-# ondemand
-path = home + '/ondemand'
-if home_exists and home_rx and isdir(path):
-  if utils.is_rx(path):
-    divider('ondemand', '', gutter, width)
-    if isdir(path + '/data/sys/dashboard/batch_connect/sys/rstudio_server'):
-      print("Ondemand RStudio")
-
 ###########################
 ## current and past jobs ##
 ###########################
@@ -488,13 +485,11 @@ if home_exists:
     for share in shares:
       print(share)
     if jobs: print(jobs)
-  if lines: print('-' * width)
   lines = jb.sacct(gutter, host, netid)
+  if lines: print('-' * width)
   for line in lines:
     print(line)
 
-# .ssh
-# .Xauthority
 # .allinea
 
 ###############
