@@ -91,6 +91,7 @@ def r_packages(netid, evars, term, gutter, width, verbose):
     if rlibs[0]: print(f"{gutter}R_LIBS set in ~/{rlibs[1]}")
     if rlibsuser[0]: print(f"{gutter}R_LIBS_USER set in ~/{rlibsuser[1]}")
     if ondemand:
+      #TODO need to check all dates within .rstudio folder
       today = datetime.today().date()
       year = today.year
       month = today.month

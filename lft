@@ -148,6 +148,33 @@ else:
   print("  Active: N/A")
 if spon: print(" Sponsor:")
 
+######################
+## home directories ##
+######################
+import csv
+# TODO different path for adroit and tigressdata
+# on adroit (and others?) consider: /home/jdh4/software/bin/lft
+if host == "adroit":
+  flnm = "/scratch/network/jdh4/python-utilities/.lft/combined_ls.csv"
+elif host == "tigressdata":
+  flnm = "/tiger/scratch/gpfs/jdh4/python-devel/lft/cron/combined_ls.csv"
+else:
+  flnm = "/tigress/jdh4/python-devel/lft/cron/combined_ls.csv"
+with open(flnm, mode='r') as csv_file:
+  csv_reader = csv.DictReader(csv_file)
+  next(csv_reader)
+  hdirs = []
+  for row in csv_reader:
+    if row["netid"] == netid:
+      hdirs = [hdir for hdir in list(row.values())[1:] if hdir != '']
+      break
+if hdirs:
+  with term.location(65, 4):
+    print("/home")
+    for hdir in sorted(hdirs):
+      pre = "*" if hdir in host else " "
+      print(term.move_x(67) + pre + hdir)
+
 ###############################
 ## .bashrc and .bash_profile ##
 ###############################
@@ -315,33 +342,6 @@ else:
 with term.location():
   print(term.move_xy(2, 6) + "Groups: " + grps)
 
-######################
-## home directories ##
-######################
-import csv
-# TODO different path for adroit and tigressdata
-# on adroit (and others?) consider: /home/jdh4/software/bin/lft
-if host == "adroit":
-  flnm = "/scratch/network/jdh4/python-utilities/.lft/combined_ls.csv"
-elif host == "tigressdata":
-  flnm = "/tiger/scratch/gpfs/jdh4/python-devel/lft/cron/combined_ls.csv"
-else:
-  flnm = "/tigress/jdh4/python-devel/lft/cron/combined_ls.csv"
-with open(flnm, mode='r') as csv_file:
-  csv_reader = csv.DictReader(csv_file)
-  next(csv_reader)
-  hdirs = []
-  for row in csv_reader:
-    if row["netid"] == netid:
-      hdirs = [hdir for hdir in list(row.values())[1:] if hdir != '']
-      break
-if hdirs:
-  with term.location(65, 4):
-    print("/home")
-    for hdir in sorted(hdirs):
-      pre = "*" if hdir in host else " "
-      print(term.move_x(67) + pre + hdir)
-
 ###########
 ## shell ##
 ###########
@@ -464,6 +464,7 @@ if home_exists and home_rx:
 ############
 ## matlab ##
 ############
+#TODO ondemand
 path = home + '/.matlab'
 if home_exists and home_rx and isdir(path):
   if utils.is_rx(path):
@@ -525,10 +526,12 @@ if home_exists and home_rx and disk:
     print(lines[0].split('\t')[0])
   except subprocess.TimeoutExpired:
     divider(f"{term.bold}size of /home{term.normal}", "", gutter, width)
-    print('du took too long')
+    print(f"{gutter}du timed out")
   except:
     divider(f"{term.bold}size of /home{term.normal}", "", gutter, width)
-    print("du failed so no info")
+    print(f"{gutter}du failed")
 
 print("")
 print("")
+#with term.location():
+#  print(term.move_xy(0, 0) + ".")

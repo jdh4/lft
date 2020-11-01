@@ -51,7 +51,7 @@ def squeue(gutter, host, netid):
       if (' PD ' in line): pending += 1
       if (' (Priority) ' in line): priority += 1
       if (' (Dependency) ' in line): dependency += 1
-      if (' QOSMax' in line): qosmax += 1
+      if ('(QOSMax' in line): qosmax += 1
       if ('ReqNodeNotAvail' in line): reqnode += 1
     if (running or pending):
       if pending:
@@ -181,7 +181,10 @@ def sacct(gutter, host, netid, days=3):
   #if (host == "tiger"):
   # sacct -u hzerze -S 09/24 -o jobid%20,state,start,elapsed,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8
   #frmt = 'jobid%20,state,start,elapsed,elapsedraw,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8,cputimeraw,maxrss'
-  frmt = 'jobid%20,state,start,elapsed,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8'
+  if (host == "tiger"):
+    frmt = 'jobid%20,state,start,elapsed,timelimit,ncpus,nnodes,reqmem,partition,reqgres,qos,jobname%8'
+  else:
+    frmt = 'jobid%20,state,start,elapsed,timelimit,ncpus,nnodes,reqmem,partition,qos,jobname%8'
   cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p | egrep -v '[0-9].extern|[0-9].batch|[0-9]\.[0-9]\|'"
   output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
   lines = output.stdout.split('\n')
@@ -201,6 +204,7 @@ def sacct(gutter, host, netid, days=3):
         if len(lines) > 10: lines = lines[-10:]
         max_width = dict(zip(columns, [0] * len(columns)))
         for line in lines:
+          line = line.replace("||", "|      |")
           items = line.split("|")[:-1]
           #print(items)
           j = Job(*items)

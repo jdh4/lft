@@ -16,6 +16,9 @@ from datetime import datetime
 from panes import utils
 from panes.utils import divider
 
+# TODO: nobel, anaconda lib (mpich)
+# TODO should pass term instead of making new one
+
 def clean_python_packages(pkgs):
   noshow = ['lib', 'bin', '__pycache__', 'six', 'pasta', 'pip', 'wheel', \
             'setuptools', 'pkgconfig', '_pytest']
@@ -126,6 +129,7 @@ def python_packages(netid, evars, term, gutter, width, verbose):
   # .cache
   path = f"/home/{netid}/.cache"
   dot_cache = True if isdir(path) else False
+  # TODO /home/jdh4/.cache/pip/wheels
 
   pythonpath = evars['pythonpath']
   anaconda = evars['anaconda']
@@ -153,7 +157,7 @@ def python_packages(netid, evars, term, gutter, width, verbose):
       month = today.month
       opath = f"/home/{netid}/.jupyter"
       if not isdir(opath):
-        print(f"{gutter}.jupyter not found")
+        print(f"{gutter}~/.jupyter not found")
         return None
       mtime = datetime.fromtimestamp(os.stat(opath).st_mtime)
       if mtime.date() == today:
