@@ -128,7 +128,8 @@ def format_state(x, state):
   return state[x] if x in state else "--"
 
 def format_reqgres(x):
-  return x.replace("PER_NODE:", "")
+  return x.replace("PER_NODE:", "").replace("gpu:tesla_v100", "v100") \
+          .replace("gpu:tesla_k40c", "k40c").strip()
 
 def format_qos(x):
   return x.replace("tiger", "tgr").replace("short", "sh").replace("medium", "med") \
@@ -188,13 +189,13 @@ def get_maxrss(lines):
     if (rss > maxrss): maxrss = rss
   return maxmem
  
-def align_columns(rows, cols, max_width, term, gutter):
+def align_columns(rows, cols, max_width, term, gutter, host):
   drop = ["elapsedraw", "timelimitraw", "cputimeraw", "maxrss"]
   for d in drop:
     cols.remove(d)
   trans = {'jobid':'JobID', 'jobname':'Name', 'state':'ST', 'start':'Start', \
            'elapsed':'Elap', 'partition':'Prt', 'ncpus':'c', 'nnodes':'N', \
-           'reqmem':'Mem', 'timelimit':'Lim', 'reqgres':'gres'}
+           'reqmem':'Mem', 'timelimit':'Lim', 'reqgres':'gres', 'qos':'QoS'}
   abbr = [trans[col] if col in trans else col for col in cols]
 
   # manually adjust width
@@ -202,7 +203,9 @@ def align_columns(rows, cols, max_width, term, gutter):
   max_width['state'] = max(2, max_width['state'])
   max_width['elapsed'] = max(4, max_width['state'])
   max_width['timelimit'] = max(3, max_width['timelimit'])
-  max_width['reqgres'] = max(4, max_width['reqgres'])
+  if (host == "tiger" or host == "adroit"):
+    max_width['reqgres'] = max(4, max_width['reqgres'])
+  max_width['qos'] = max(3, max_width['qos'])
 
   line = gutter
   for i, col in enumerate(cols):
@@ -252,13 +255,11 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   state = dict(zip(state.values(), state.keys()))
   # sacct format is YYYY-MM-DD[THH:MM[:SS]]
   start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
-  #if (host == "tiger"):
   # sacct -u hzerze -S 09/24 -o jobid%20,state,start,elapsed,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8
-  #frmt = 'jobid%20,state,start,elapsed,elapsedraw,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8,cputimeraw,maxrss'
-  if (host == "tiger"):
+  if (host == "tiger" or host == "adroit"):
     frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,reqgres,qos,jobname%8,maxrss"
   else:
-    frmt = 'jobid%20,state,start,elapsed,timelimit,ncpus,nnodes,reqmem,partition,qos,jobname%8'
+    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,qos,jobname%8,maxrss"
   #cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p | egrep -v '[0-9].extern|[0-9].batch|[0-9]\.[0-9]\|'"
   cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p"
   output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
@@ -275,11 +276,11 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   if (lines == []):
     return [f"{gutter}No jobs in last {24 * days} hours"]
   else:
-    overall = []
     try:
       maxmem_per_job = get_maxrss(lines)
       #print(maxmem_per_job)
       max_width = dict(zip(columns, [0] * len(columns)))
+      overall = []
       for line in lines:
         if "." not in line.split("|")[0]: overall.append(line)
       cut = 24 if verbose else 12 
@@ -293,7 +294,8 @@ def sacct(term, gutter, verbose, host, netid, days=3):
         j = j._replace(start = format_start(j.start))
         j = j._replace(state = format_state(j.state, state))
         j = j._replace(elapsed = format_elapsed_time(j.elapsed))
-        j = j._replace(reqgres = format_reqgres(j.reqgres))
+        if (host == "tiger" or host == "adroit"):
+          j = j._replace(reqgres = format_reqgres(j.reqgres))
         j = j._replace(qos = format_qos(j.qos))
         j = j._replace(reqmem = format_memory(j.reqmem))
         j = j._replace(timelimit = format_elapsed_time(j.timelimit))
@@ -303,7 +305,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
           if len(getattr(j, col)) > max_width[col]: max_width[col] = len(getattr(j, col))
         sct.append(j)
       #breakpoint()
-      sct = align_columns(sct, columns, max_width, term, gutter)
+      sct = align_columns(sct, columns, max_width, term, gutter, host)
     except:
       return [f"{gutter}Misformatted sacct output found"]
     else:
