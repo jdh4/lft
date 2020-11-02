@@ -21,19 +21,6 @@ from panes import utils
 from panes.utils import divider
 from panes import dossier
 
-class StringBox(list):
-  def __init__(self):
-    super().__init__()
-    self.width = 0
-    self.height = 0
-  def append(self, x):
-    super().append(x)
-    self.width = len(x) if len(x) > self.width else self.width
-    self.height += 1
-  def __setitem__(self, key, x):
-    super().__setitem__(key, x)
-    self.width = len(x) if len(x) > self.width else self.width
-
 ######################################
 ## evaluate command-line parameters ##
 ######################################
@@ -178,75 +165,7 @@ if hdirs:
 ###############################
 ## .bashrc and .bash_profile ##
 ###############################
-def format_modules(module_lines):
-  # convert lines with multiple modules to single lines
-  # e.g., module load intel intel-mpi cudatoolkit
-  singles = []
-  for module_line in module_lines:
-    items = module_line.split()
-    if len(items) > 1 and items[0] == 'module' and (items[1] == 'load' or items[1] == 'add'):
-      for module in module_line.split()[2:]:
-        #if module.endswith('/64'): module = module[:module.index('/64')]
-        singles.append("module load " + module)
-    else:
-      singles.append(module_line)
-  return singles
-
-def remove_comments_and_white_space(lines):
-  remove_comments = [line for line in lines if not line.strip().startswith('#')]
-  trans = str.maketrans('', '', ' \n\t\r')
-  return ''.join(remove_comments).translate(trans)
-
-def analyze_startup_script(flnm, default, evars):
-  aliases = 0
-  exports = 0
-  modules = []
-  path = f"/home/{netid}/{flnm}"
-  if os.path.isfile(path):
-    with open(path) as f:
-      lines = f.readlines()
-    startup_rm = remove_comments_and_white_space(lines)
-    default_rm = remove_comments_and_white_space(default)
-    if (startup_rm == default_rm):
-      state = "default"
-    else:
-      state = "custom"
-      for line in lines:
-        line = line.strip().lower()
-        if line.startswith('#'): continue # ignore comments
-        if (line.startswith('module') and ('load' in line or 'add' in line) and \
-          not 'alias' in line):
-          modules.append(line)
-        if ('alias' in line): aliases += 1
-        if ('export' in line): exports += 1
-        if 'miniconda' in line and 'path' in line:
-          evars['miniconda'] = True
-        if 'anaconda' in line and 'path' in line:
-          evars['anaconda'] = True
-        if ('pythonpath' in line):
-          evars['pythonpath'] = (True, flnm)
-        if 'r_libs' in line and 'export' in line and '_user' not in line:
-          evars['rlibs'] = (True, flnm)
-        if 'r_libs_user' in line and 'export' in line:
-          evars['rlibsuser'] = (True, flnm)
-  else:
-    state = "missing"
-  return (aliases, exports, modules, state, flnm)
-
-def print_with_modules(al, ex, modules, state, flnm):
-  term = Terminal()
-  print(f"{gutter}~/{flnm}: {state}")
-  if modules:
-    mods = format_modules(modules)
-    if verbose or len(mods) < 4:
-      for mod in mods:
-        print(f"{gutter}  {term.bold}{term.red}{mod}{term.normal}")
-    else:
-      for mod in mods[:3]:
-        print(f"{gutter}  {term.bold}{term.red}{mod}{term.normal}")
-      print(f"{gutter}  {term.bold}{term.red}(plus {len(mods) - 3} more){term.normal}")
-
-divider(f"{term.bold}Environment{term.normal}", '', gutter, width)
+from panes import startup_scripts as ss
 
 evars = {}
 evars['miniconda'] = False
@@ -255,96 +174,50 @@ evars['pythonpath'] = (False, None)
 evars['rlibs'] = (False, None)
 evars['rlibsuser'] = (False, None)
 
+divider(f"{term.bold}Environment{term.normal}", '', gutter, width)
 if not home_exists:
   print(f"{gutter}{home} does not exist")
 elif home_exists and not home_rx:
   print(f"{gutter}{home} is private")
 else:
-  rc = analyze_startup_script('.bashrc', utils.bashrc_default, evars)
-  bp = analyze_startup_script('.bash_profile', utils.bash_profile_default, evars)
+  rc = ss.analyze_startup_script('.bashrc', utils.bashrc_default, evars, netid)
+  bp = ss.analyze_startup_script('.bash_profile', utils.bash_profile_default, evars, netid)
   if not rc[2] and not bp[2]:
     print(f"{gutter}      ~/.bashrc: {rc[3]}")
     print(f"{gutter}~/.bash_profile: {bp[3]}")
   else:
-    print_with_modules(*rc)
-    print_with_modules(*bp)
+    ss.print_with_modules(*rc, term, gutter, verbose)
+    ss.print_with_modules(*bp, term, gutter, verbose)
 
 #################
 ## filesystems ##
 #################
-def public_or_private(path):
-  if utils.is_rx(path):
-    return f"{path}: public ({len(os.listdir(path))} items)"
-  else:
-    return f"{path}: private"
-
-clusters = ['adroit', 'perseus', 'della', 'tiger', 'traverse']
-is_cluster = any([cluster in host for cluster in clusters])
-
-if is_cluster: # why do it this way? to distinguish from tigressdata?
-  fs = StringBox()
-
-  #path = '/home/' + netid
-  #if isdir(path) and not is_rx(path):
-  #  fs.append(f"{path}: private")
-
-  path = '/scratch/gpfs/' + netid
-  if isdir(path):
-    fs.append(public_or_private(path))
-
-  path = '/tigress/' + netid
-  if isdir(path):
-    fs.append(public_or_private(path))
-
-  if ('della' in host or 'adroit' in host):
-    path = '/scratch/network/' + netid
-    if isdir(path):
-      fs.append(public_or_private(path))
-
-# align filesystems on colon
-def align_on_colon(s):
-  max_idx = max([line.index(':') for line in s])
-  for i in range(fs.height):
-    fs[i] = " " * (max_idx - fs[i].index(':')) + fs[i]
-  return fs
-
-if fs: fs = align_on_colon(fs)
-if not home_exists or not home_rx: print("\n" * fs.height)
-# print filesystems
-with term.location():
-  if len(fs):
-    if spon:
-      print(term.move_xy(width - fs.width - len(gutter), 12) + term.bold('Filesystems'))
-    else:
-      print(term.move_xy(width - fs.width - len(gutter), 11) + term.bold('Filesystems'))
-    for i in range(fs.height):
-      xc = width - fs.width - len(gutter)
-      yc = 14 + i if spon else 13 + i
-      if 'home' in fs[i]:
-        print(term.move_xy(xc, yc) + term.red + term.bold + fs[i] + term.normal)
-      else:
-        print(term.move_xy(xc, yc) + fs[i])
+from panes import filesystems as fs
+_ = fs.filesystems(term, gutter, host, netid, width, spon, home_exists, home_rx)
 
 ############
 ## groups ##
 ############
-# TODO groups vary with cluster
-cmd = "groups " + netid
+# note that the output of the groups command can vary with cluster
+cmd = f"groups {netid}"
 output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
 lines = output.stdout.decode("utf-8").split('\n')
-# jdh4 : cses quijote (success)
-# groups: aturing: no such user (fail)
-grps = lines[0].split(':')[-1].split()
-if len(grps) > 3:
-  grps = ', '.join(grps[:3]) + ', ...'
+# jdh4 : cses quijote
+# groups: aturing: no such user
+if output.returncode != 0 or "no such user" in lines[0]:
+  grps = ""
 else:
-  grps = ', '.join(grps)
+  grps = lines[0].split(':')[-1].split()
+  if len(grps) > 3:
+    grps = ', '.join(grps[:3]) + ', ...'
+  else:
+    grps = ', '.join(grps)
 with term.location():
   print(term.move_xy(2, 6) + "Groups: " + grps)
 
-###########
-## shell ##
-###########
+#################
+## login shell ##
+#################
 if home_exists:
   cmd = f"getent passwd {netid}"
   try:
@@ -354,7 +227,7 @@ if home_exists:
   else:
     line = output.stdout.decode("utf-8")
     if line.count(":") > 0:
-      shell = line.split(":")[-1].strip() if ":" in line else ""
+      shell = line.split(":")[-1].strip()
       red = ["/bin/csh", "/bin/zsh", "/bin/tcsh", "/usr/bin/zsh", "/bin/sh", "bin/ksh"]
       if shell in red:
         print(f"{gutter}    login shell: {term.bold}{term.red}{shell}{term.normal}")
@@ -364,85 +237,9 @@ if home_exists:
 ####################
 ## sponsor_report ##
 ####################
-
-# TODO luet does not have account on tiger
-# TODO hwaight does not have a sponsor since only adroit account
-
-# $ sponsor_report jdh4
-# No sponsored users for jdh4 (Jonathan D. Halverson)
-# This user is sponsored by curt
-
-# $ sponsor_report aturing
-# FATAL ERROR: Could not find user aturing in Princeton LDAP
-
-# $ sponsor_report hwaight
-# hwaight (Hannah C. Waight) has no Tigress account
-
-# $ sponsor_report ethier
-# Manager ethier (Stephane Ethier) has sponsored the following users
-#      gascione (George Ascione) has accounts on eddy
-
-# Cluster eddy has these users gascione
 if spon:
-  cmd = "sponsor_report " + netid
-  try:
-    output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
-  except subprocess.TimeoutExpired:
-    #print("sponsor_report timed out looking for", netid)
-    sponsor = None
-  except:
-    # netid not in Princeton LDAP
-    sponsor = None
-  else:
-    lines = output.stdout.decode("utf-8").split('\n')
-    if len(lines) > 1 and 'No sponsored users' in lines[0]:
-      sponsor = lines[1].split()[-1]
-    elif "Manager" in lines[0] and "has sponsored" in lines[0]:
-      sponsor = netid
-    else:
-      sponsor = None
-
-  if sponsor:
-    accounts = []
-    cmd = "sponsor_report " + sponsor
-    try:
-      output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
-    except:
-      pass
-    else:
-      lines = output.stdout.decode("utf-8").split('\n')
-      for line in lines:
-        if "Manager" in line and "has sponsored" in line:
-          # Manager curt (Curtis W. Hillegas) has sponsored the following users
-          sponsor_full_name = line.split('(')[1].split(')')[0]
-          sponsor_full_name = utils.remove_middle_initial(sponsor_full_name)
-          with term.location():
-            print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
-        if 0 and netid in line and 'has accounts on' in line:
-          # jdh4 (Jonathan D. Halverson) has accounts on della, perseus, tiger, traverse
-          accounts = line.split('has accounts')[-1].replace(',', '').split()[1:]
-          if 'mcmillan' in accounts: accounts.remove('mcmillan')
-          if 'eddy' in accounts: accounts.remove('eddy')
-
-if 0:
-  # check for account adroit and tigressdata (use threading while sponsorreport runs)
-  path = '/tigress/jdh4/python-devel/lft'
-  with open(path + '/adroit_getent.txt', 'r') as f:
-    adroit_users = f.readlines()
-  for user in adroit_users:
-    if user == netid + '\n':
-     accounts.append("adroit")
-  # check for account on tigressdata
-  with open(path + '/tigressdata_getent.txt', 'r') as f:
-    tg_users = f.readlines()
-  for user in tg_users:
-    if user == netid + '\n':
-      accounts.append("tigressdata")
-  # print accounts
-  with term.location(50, 5):
-    for account in sorted(accounts):
-      pre = "*" if account in host else " "
-      print(term.move_x(50) + pre + account)
+  from panes import sponsor as sp
+  _ = sp.get_sponsor(term, gutter, netid)
 
 ############
 ## python ##
@@ -486,12 +283,12 @@ if home_exists:
     for share in shares:
       print(share)
     if jobs: print(jobs)
-  lines = jb.sacct(gutter, host, netid)
+  lines = jb.sacct(term, gutter, verbose, host, netid)
   if lines: print('-' * width)
   for line in lines:
     print(line)
 
-# .allinea
+# .allinea TODO
 
 ###############
 ## reminders ##
@@ -533,5 +330,3 @@ if home_exists and home_rx and disk:
 
 print("")
 print("")
-#with term.location():
-#  print(term.move_xy(0, 0) + ".")

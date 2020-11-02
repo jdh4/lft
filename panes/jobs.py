@@ -81,25 +81,25 @@ def format_elapsed_time(x):
   if x.count(":") == 1:
     minutes, seconds = map(int, x.split(":"))
     if minutes > 0:
-      return f"{round(minutes + seconds / 60)}min"
+      return f"{round(minutes + seconds / 60)}m"
     else:
-      return f"{seconds}sec"
+      return f"{seconds}s"
   elif x.count(":") == 2 and "-" not in x:
     hours, minutes, seconds = map(int, x.split(":"))
     if (hours + minutes + seconds == 0):
-      return "0sec"
+      return "0s"
     elif (hours + minutes == 0):
-      return f"{seconds}sec"
+      return f"{seconds}s"
     elif (hours == 0):
-      return f"{round(minutes + seconds / 60)}min"
+      return f"{round(minutes + seconds / 60)}m"
     elif (hours == 1):
-      return f"{round(60 + minutes + seconds / 60)}min"
+      return f"{round(60 + minutes + seconds / 60)}m"
     else:
-      return f"{round(hours + minutes / 60 + seconds / 3600)}hrs"
+      return f"{round(hours + minutes / 60 + seconds / 3600)}h"
   elif x.count(":") == 2 and "-" in x:
     days = int(x.split("-")[0])
     hours, minutes, seconds = map(int, x.split("-")[1].split(":"))
-    return f"{round(24 * days + hours + minutes / 60 + seconds / 3600)}hrs"
+    return f"{round(24 * days + hours + minutes / 60 + seconds / 3600)}h"
   else:
     return " -- "
 
@@ -115,48 +115,122 @@ def format_start(x):
       return start
 
 def format_memory(x):
-  return x.replace("000Gn", "T/N").replace("000Gc", "T/c") \
+  return x.replace("000Gn", "T/N") \
+          .replace("000Gc", "T/c") \
           .replace("000Mn", "G/N") \
           .replace("000Mc", "G/c") \
           .replace("Gn", "G/N") \
-          .replace("Mc", "M/c").replace("Gc", "G/c")
+          .replace("Gc", "G/c") \
+          .replace("Mc", "M/c") \
 
 def format_state(x, state):
   x = "CANCELLED" if "CANCELLED" in x else x
   return state[x] if x in state else "--"
 
-def align_columns(rows, cols, max_width, gutter):
-  trans = {'jobid':'JobID ', 'jobname':'Name  ', 'state':'ST', 'start':'Start   ', \
+def format_reqgres(x):
+  return x.replace("PER_NODE:", "")
+
+def format_qos(x):
+  return x.replace("tiger", "tgr").replace("short", "sh").replace("medium", "med") \
+          .replace("long", "lg").replace("test", "ts")
+
+def format_jobname(x):
+  return x if len(x) <= 8 else x[:7] + "+"
+
+def cmt_efficiency(elapraw, limitraw, reqmem, nnodes, ncpus, maxrss):
+  # compute ratio of used to allocated time
+  if limitraw.isdigit() and elapraw.isdigit():
+    if int(limitraw) == 0:
+      T = "-"
+    else:
+      seconds_per_minute = 60
+      ratio = float(elapraw) / (seconds_per_minute * int(limitraw))
+      if ratio > 1: ratio = 1
+      T = str(round(9 * ratio))
+  else:
+    T = "-"
+  # compute ratio of used to allocated memory
+  if maxrss == -1 or not nnodes.isdigit() or not ncpus.isdigit():
+    M = " "
+  elif "N" in reqmem:
+    mem = reqmem.replace("T/N", "000000000").replace("G/N", "000000").replace("M/N", "000").replace("K/N", "")
+    alloc = int(nnodes) * int(mem)
+    ratio = float(maxrss) / alloc
+    if ratio > 1: ratio = 1
+    M = str(round(9 * ratio))
+  elif "c" in reqmem:
+    mem = reqmem.replace("T/c", "000000000").replace("G/c", "000000").replace("M/c", "000").replace("K/c", "")
+    alloc = int(ncpus) * int(mem)
+    ratio = float(maxrss) / alloc
+    if ratio > 1: ratio = 1
+    M = str(round(9 * ratio))
+  else:
+    M = " "
+
+  return f"{M}{T}"
+
+def get_maxrss(lines):
+  maxmem = {}
+  jobid_prev = lines[0].split("|")[0]
+  if ("." in jobid_prev): return maxmem
+  maxrss = -1
+  for line in lines:
+    items = line.split("|")
+    jobid = items[0].split(".")[0]
+    if (jobid != jobid_prev):
+      maxmem[jobid_prev] = maxrss
+      jobid_prev = jobid
+      maxrss = -1
+    def format_rss(x):
+      x = x.replace("K", "").replace("M", "000").replace("G", "000000").replace("T", "000000000")
+      return int(x) if x.isdigit() else -1
+    rss = format_rss(items[-2])
+    if (rss > maxrss): maxrss = rss
+  return maxmem
+ 
+def align_columns(rows, cols, max_width, term, gutter):
+  drop = ["elapsedraw", "timelimitraw", "cputimeraw", "maxrss"]
+  for d in drop:
+    cols.remove(d)
+  trans = {'jobid':'JobID', 'jobname':'Name', 'state':'ST', 'start':'Start', \
            'elapsed':'Elap', 'partition':'Prt', 'ncpus':'c', 'nnodes':'N', \
-           'reqmem':'Mem ', 'timelimit':'limit'}
+           'reqmem':'Mem', 'timelimit':'Lim', 'reqgres':'gres'}
   abbr = [trans[col] if col in trans else col for col in cols]
 
   # manually adjust width
-  max_width['jobname'] = 8
+  max_width['jobname'] = max(4, max_width['jobname'])
   max_width['state'] = max(2, max_width['state'])
+  max_width['elapsed'] = max(4, max_width['state'])
+  max_width['timelimit'] = max(3, max_width['timelimit'])
+  max_width['reqgres'] = max(4, max_width['reqgres'])
 
   line = gutter
   for i, col in enumerate(cols):
-    field = " " * max_width[col] + abbr[i]
-    field = field[-max_width[col]:]
+    if len(abbr[i]) >= max_width[col]:
+      padding = ""
+      remainder = 0
+      dpadding = (len(abbr[i]) - max_width[col]) // 2
+    else:
+      padding = " " * ((max_width[col] - len(abbr[i])) // 2)
+      remainder = max_width[col] - len(abbr[i]) - 2 * len(padding)
+      dpadding = 0
+    #print(abbr[i], max_width[col], len(padding), remainder, dpadding)
+    field = padding + " " * remainder + abbr[i] + padding
     line += field + "  "
   sct = [line]
   for row in rows:
     line = gutter
     for col in cols:
-      if col == "jobname":
-        field = getattr(row, col)
-        field = field if len(field) <= 8 else field[:7] + "+"
-        field = " " * (8 - len(field)) + field
-        line += field + "  "
-      else:
-        field = " " * max_width[col] + getattr(row, col)
-        field = field[-max_width[col]:]
-        line += field + "  "
+      fieldraw = getattr(row, col)
+      field = " " * max_width[col] + fieldraw + " " * dpadding * 0
+      field = field[-max_width[col]:]
+      if col == "state" and fieldraw in ("TO", "OOM"):
+        field = f"{term.bold}{term.red}{field}{term.normal}"
+      line += field + "  "
     sct.append(line)
   return sct
 
-def sacct(gutter, host, netid, days=3):
+def sacct(term, gutter, verbose, host, netid, days=3):
   """Return output of sacct over the last N days."""
   state = {
   'BF'  :'BOOT_FAIL',
@@ -182,42 +256,54 @@ def sacct(gutter, host, netid, days=3):
   # sacct -u hzerze -S 09/24 -o jobid%20,state,start,elapsed,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8
   #frmt = 'jobid%20,state,start,elapsed,elapsedraw,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8,cputimeraw,maxrss'
   if (host == "tiger"):
-    frmt = 'jobid%20,state,start,elapsed,timelimit,ncpus,nnodes,reqmem,partition,reqgres,qos,jobname%8'
+    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,reqgres,qos,jobname%8,maxrss"
   else:
     frmt = 'jobid%20,state,start,elapsed,timelimit,ncpus,nnodes,reqmem,partition,qos,jobname%8'
-  cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p | egrep -v '[0-9].extern|[0-9].batch|[0-9]\.[0-9]\|'"
+  #cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p | egrep -v '[0-9].extern|[0-9].batch|[0-9]\.[0-9]\|'"
+  cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p"
   output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
   lines = output.stdout.split('\n')
  
-  # avoid dependency on pandas and its slow startup by using namedtuple
+  # avoid dependency on pandas by using namedtuple
   from collections import namedtuple
-  columns = [col.split('%')[0] for col in frmt.split(",")]
+  extra_columns = ["MT"]
+  columns = [col.split('%')[0] for col in frmt.split(",")] + extra_columns
   Job = namedtuple("Job", columns)
   #breakpoint()
   sct = []
   if lines[-1] == '': lines = lines[:-1]
-  if (len(lines) == 0):
+  if (lines == []):
     return [f"{gutter}No jobs in last {24 * days} hours"]
   else:
+    overall = []
     try:
-      if (len(lines) > 1):
-        if len(lines) > 10: lines = lines[-10:]
-        max_width = dict(zip(columns, [0] * len(columns)))
-        for line in lines:
-          line = line.replace("||", "|      |")
-          items = line.split("|")[:-1]
-          #print(items)
-          j = Job(*items)
-          # format of start is 2020-09-13T11:42:34
-          j = j._replace(start = format_start(j.start))
-          j = j._replace(state = format_state(j.state, state))
-          j = j._replace(elapsed = format_elapsed_time(j.elapsed))
-          j = j._replace(reqmem = format_memory(j.reqmem))
-          j = j._replace(timelimit = format_elapsed_time(j.timelimit))
-          for col in columns:
-            if len(getattr(j, col)) > max_width[col]: max_width[col] = len(getattr(j, col))
-          sct.append(j)
-        sct = align_columns(sct, columns, max_width, gutter)
+      maxmem_per_job = get_maxrss(lines)
+      #print(maxmem_per_job)
+      max_width = dict(zip(columns, [0] * len(columns)))
+      for line in lines:
+        if "." not in line.split("|")[0]: overall.append(line)
+      cut = 24 if verbose else 12 
+      if len(overall) > cut: overall = overall[-cut:]
+      for line in overall:
+        line = line.replace("||", "|      |")
+        items = line.split("|")[:-1] + [""] * len(extra_columns)
+        j = Job(*items)
+        # format of start is 2020-09-13T11:42:34
+        j = j._replace(jobname = format_jobname(j.jobname))
+        j = j._replace(start = format_start(j.start))
+        j = j._replace(state = format_state(j.state, state))
+        j = j._replace(elapsed = format_elapsed_time(j.elapsed))
+        j = j._replace(reqgres = format_reqgres(j.reqgres))
+        j = j._replace(qos = format_qos(j.qos))
+        j = j._replace(reqmem = format_memory(j.reqmem))
+        j = j._replace(timelimit = format_elapsed_time(j.timelimit))
+        maxrss = maxmem_per_job[j.jobid] if j.jobid in maxmem_per_job else -1
+        j = j._replace(MT = cmt_efficiency(j.elapsedraw, j.timelimitraw, j.reqmem, j.nnodes, j.ncpus, maxrss))
+        for col in columns:
+          if len(getattr(j, col)) > max_width[col]: max_width[col] = len(getattr(j, col))
+        sct.append(j)
+      #breakpoint()
+      sct = align_columns(sct, columns, max_width, term, gutter)
     except:
       return [f"{gutter}Misformatted sacct output found"]
     else:

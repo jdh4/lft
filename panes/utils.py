@@ -12,6 +12,12 @@ def is_rx(path):
   # true if permissions are rx or rwx for other
   return oct(os.stat(path).st_mode)[-1] in ['5', '7']
 
+def public_or_private(path):
+  if is_rx(path):
+    return f"{path}: public ({len(os.listdir(path))} items)"
+  else:
+    return f"{path}: private"
+
 def print_packages(term, gutter, width, pkgs, red, green, max_chars=14):
   color = []
   for pkg in pkgs:
