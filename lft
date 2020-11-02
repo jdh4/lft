@@ -31,21 +31,21 @@ def print_help():
   print("")
   print("Options:")
   print("     -v  Produce verbose output")
+  print("     -s  Show sponsor")
   print("     -d  Compute the size of /home using du -sh")
-  print("     -q  Quick mode (ignore sponsor)")
   print("     -h  Show this help menu")
   print("")
   sys.exit(0)
 
-if (len(sys.argv) == 1 or len(sys.argv) > 4):
+if (len(sys.argv) == 1 or len(sys.argv) > 5):
   print("")
   print("ERROR: Wrong number of command-line parameters.")
   print_help()
 if ('-h' in sys.argv or '--help' in sys.argv):
   print_help()
 verbose = True if ('-v' in sys.argv) else False
-disk    = True if ('-d' in sys.argv) else False
 spon    = True if ('-s' in sys.argv) else False
+disk    = True if ('-d' in sys.argv) else False
 
 ###############################
 ## if __name__ == "__main__" ##
@@ -268,7 +268,7 @@ if home_exists and home_rx and isdir(path):
 ###########################
 from panes import jobs as jb
 
-if home_exists:
+if home_exists and host != "tigressdata":
   shares = jb.sshare(term, gutter, host, netid)
   jobs = jb.squeue(gutter, host, netid)
   if shares or jobs:
@@ -313,7 +313,8 @@ if home_exists and home_rx and disk:
     output = subprocess.run(cmd, capture_output=True, shell=True, timeout=15)
     lines = output.stdout.decode("utf-8").split('\n')
     divider('size of /home on ' + host, '', gutter, width)
-    print(lines[0].split('\t')[0])
+    sz = lines[0].split('\t')[0]
+    print(f"{gutter}{sz}")
   except subprocess.TimeoutExpired:
     divider(f"{term.bold}size of /home{term.normal}", "", gutter, width)
     print(f"{gutter}du timed out")
