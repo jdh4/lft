@@ -16,13 +16,12 @@ alias lft='/home/jdh4/bin/lft'
 To get started look at the help menu:
 
 ```
-$ lft -h
-
 lft is looking for trouble. Example usage:
      $ lft aturing
 
 Options:
      -v  Produce verbose output
+     -s  Show sponsor
      -d  Compute the size of /home using du -sh
      -h  Show this help menu
 ```
