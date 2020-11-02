@@ -139,14 +139,7 @@ if spon: print(" Sponsor:")
 ## home directories ##
 ######################
 import csv
-# TODO different path for adroit and tigressdata
-# on adroit (and others?) consider: /home/jdh4/software/bin/lft
-if host == "adroit":
-  flnm = "/scratch/network/jdh4/python-utilities/.lft/combined_ls.csv"
-elif host == "tigressdata":
-  flnm = "/tiger/scratch/gpfs/jdh4/python-devel/lft/cron/combined_ls.csv"
-else:
-  flnm = "/tigress/jdh4/python-devel/lft/cron/combined_ls.csv"
+flnm = "/home/jdh4/bin/cron/combined_ls.csv"
 with open(flnm, mode='r') as csv_file:
   csv_reader = csv.DictReader(csv_file)
   next(csv_reader)

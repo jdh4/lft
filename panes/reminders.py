@@ -103,13 +103,7 @@ def get_reservations(term, gutter, days_away=7):
 ############################
 def get_reminders(term, gutter, flnm, host, days_away=7):
   """Return a list of upcoming events to be printed."""
-  if host == "adroit":
-    flnm = "/scratch/network/jdh4/python-utilities/.lft/" + flnm
-  elif host == "tigressdata":
-    flnm = "/tiger/scratch/gpfs/jdh4/python-devel/lft/" + flnm
-  else:
-    flnm = "/tigress/jdh4/python-devel/lft/" + flnm
-
+  flnm = "/home/jdh4/bin/remind/" + flnm
   reminders = []
   if os.path.isfile(flnm):
     with open(flnm, mode='r') as csv_file:
