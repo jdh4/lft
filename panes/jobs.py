@@ -142,35 +142,37 @@ def cmt_efficiency(elapraw, limitraw, reqmem, nnodes, ncpus, maxrss):
   # compute ratio of used to allocated time
   if limitraw.isdigit() and elapraw.isdigit():
     if int(limitraw) == 0:
-      T = "-"
+      T = " "
     else:
       seconds_per_minute = 60
       ratio = float(elapraw) / (seconds_per_minute * int(limitraw))
       if ratio > 1: ratio = 1
       T = str(round(9 * ratio))
   else:
-    T = "-"
+    T = " "
   # compute ratio of used to allocated memory
   if maxrss == -1 or not nnodes.isdigit() or not ncpus.isdigit():
     M = " "
   elif "N" in reqmem:
-    mem = reqmem.replace("T/N", "000000000").replace("G/N", "000000").replace("M/N", "000").replace("K/N", "")
+    mem = reqmem.replace("T/N", "000000000").replace("G/N", "000000") \
+                .replace("M/N", "000").replace("K/N", "")
     alloc = int(nnodes) * int(mem)
     ratio = float(maxrss) / alloc
     if ratio > 1: ratio = 1
     M = str(round(9 * ratio))
   elif "c" in reqmem:
-    mem = reqmem.replace("T/c", "000000000").replace("G/c", "000000").replace("M/c", "000").replace("K/c", "")
+    mem = reqmem.replace("T/c", "000000000").replace("G/c", "000000") \
+                .replace("M/c", "000").replace("K/c", "")
     alloc = int(ncpus) * int(mem)
     ratio = float(maxrss) / alloc
     if ratio > 1: ratio = 1
     M = str(round(9 * ratio))
   else:
     M = " "
-
   return f"{M}{T}"
 
 def get_maxrss(lines):
+  #TODO as junk line at end to get last row
   maxmem = {}
   jobid_prev = lines[0].split("|")[0]
   if ("." in jobid_prev): return maxmem
@@ -183,7 +185,8 @@ def get_maxrss(lines):
       jobid_prev = jobid
       maxrss = -1
     def format_rss(x):
-      x = x.replace("K", "").replace("M", "000").replace("G", "000000").replace("T", "000000000")
+      x = x.replace("K", "").replace("M", "000").replace("G", "000000") \
+           .replace("T", "000000000")
       return int(x) if x.isdigit() else -1
     rss = format_rss(items[-2])
     if (rss > maxrss): maxrss = rss
@@ -203,7 +206,7 @@ def align_columns(rows, cols, max_width, term, gutter, host):
   max_width['state'] = max(2, max_width['state'])
   max_width['elapsed'] = max(4, max_width['state'])
   max_width['timelimit'] = max(3, max_width['timelimit'])
-  if (host == "tiger" or host == "adroit"):
+  if (host == "tiger" or host == "adroit" or host == "traverse"):
     max_width['reqgres'] = max(4, max_width['reqgres'])
   max_width['qos'] = max(3, max_width['qos'])
 
@@ -256,7 +259,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   # sacct format is YYYY-MM-DD[THH:MM[:SS]]
   start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
   # sacct -u hzerze -S 09/24 -o jobid%20,state,start,elapsed,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8
-  if (host == "tiger" or host == "adroit"):
+  if (host == "tiger" or host == "adroit" or host == "traverse"):
     frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,reqgres,qos,jobname%8,maxrss"
   else:
     frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,qos,jobname%8,maxrss"
@@ -294,7 +297,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
         j = j._replace(start = format_start(j.start))
         j = j._replace(state = format_state(j.state, state))
         j = j._replace(elapsed = format_elapsed_time(j.elapsed))
-        if (host == "tiger" or host == "adroit"):
+        if (host == "tiger" or host == "adroit" or host == "traverse"):
           j = j._replace(reqgres = format_reqgres(j.reqgres))
         j = j._replace(qos = format_qos(j.qos))
         j = j._replace(reqmem = format_memory(j.reqmem))
