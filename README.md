@@ -48,7 +48,7 @@ Options:
 + report on custom installations of Anaconda or Miniconda.
 + show when OnDemand Jupyter, RStudio, MATLAB or Stata was last used.
 + list existence of R libraries and packages found in `~/R/x86_64-redhat-linux-gnu-library/X.Y` as well as Conda environments in `~/.conda/envs` (packages are printed with color coding to highlight parallel packages).
-+ list R `LOCK` files.
++ reports existence of `~/.R/Makevars` and  R `LOCK` files.
 + show when OnDemand RStudio was last used.
 + list Julia packages found in `~/.julia/packages` with color coding.
 + show which MATLAB environment modules the user loaded and when OnDemand MATLAB was last used.
