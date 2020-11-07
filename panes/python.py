@@ -52,7 +52,7 @@ def condarc_path(netid):
   return None
 
 def python_packages(netid, evars, term, gutter, width, verbose):
-  versions = ['2.6', '2.7', '3.6', '3.7', '3.8']
+  versions = ['2.6', '2.7', '3.6', '3.7', '3.8', '3.9']
   frmt = "(%b %Y)"
   parallel = ['mpi4py', 'mpich', 'intel_openmp', 'dask', 'joblib', 'tbb']
   gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba', 'jax']
@@ -102,7 +102,7 @@ def python_packages(netid, evars, term, gutter, width, verbose):
                     print_single = True
                   else:
                     printed_divider = check_python(printed_divider, term, gutter, width)
-                    print(f"{gutter}{pe}/{term.bold}{env}{term.normal}")
+                    print(f"{gutter}{pe}/{term.bold}{env}{term.normal} (v{version})")
                     print_single = True
               if not success_per_env and not r_env:
                 printed_divider = check_python(printed_divider, term, gutter, width)

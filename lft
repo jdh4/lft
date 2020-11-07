@@ -30,7 +30,7 @@ def print_help():
   print("     $ lft aturing")
   print("")
   print("Options:")
-  print("     -v  Produce verbose output")
+  print("     -v  Verbose output (show packages and more jobs)")
   print("     -s  Show sponsor")
   print("     -d  Compute the size of /home using du -sh")
   print("     -h  Show this help menu")
@@ -62,11 +62,11 @@ if (term.width < width):
 # translate hostname (e.g., della5.princeton.edu -> della)
 hostname = gethostname().strip().lower()
 if (hostname not in utils.known_hosts):
-  print(f"{hostname} is unknown (see utils.py). Exiting ...")
+  print(f"{hostname} is unknown (see panes/utils.py). Exiting ...")
   sys.exit(0)
 host = utils.known_hosts[hostname]
 
-# ldapsearch
+# ldapsearch (causes code to seemingly hang for 1-2 seconds at start)
 username = sys.argv[1].strip()
 person = dossier.ldap_plus([username])
 netid = person[1][9]
@@ -76,7 +76,7 @@ if netid is None:
   print("")
   sys.exit(0)
 
-# check for existence and permissions of /home on local cluster
+# check for existence and permissions of /home
 home = f"/home/{netid}"
 if isdir(home):
   home_exists = True
@@ -101,7 +101,7 @@ print("=" * width)
 ## print LDAP info about the user ##
 ####################################
 
-# netid, name, dept, position
+# netid, name, groups, dept, position
 p = person[1]
 if p[9]:
  if netid == username:
@@ -109,49 +109,35 @@ if p[9]:
  else:
    print(f"   NetID: {term.bold(p[9])} ({term.red}{username} is alias{term.normal})")
 if p[0]: print("    Name:", p[0])
-print("  Groups:")
+print("  Groups:")  # completed below
 print("    Dept:", p[1]) if p[1] else print("    Dept: unknown")
 print("Position:", p[3]) if p[3] else print("Position: unknown")
 
 # modification time of /home
 if isdir(home):
-  mtime = datetime.fromtimestamp(os.stat(home).st_mtime)
-  dt = datetime.today() - mtime
-  if dt.days == 0:
-    hours = dt.seconds // 3600
-    minutes = dt.seconds // 60
-    if hours > 1:
-      print(f"  Active: {hours} hours ago")
-    elif minutes > 1:
-      print(f"  Active: {minutes} minutes ago")
-    else:
-      print(f"  Active: {dt.seconds} seconds ago")
-  else:
-    if dt.days < 365:
-      print(f"  Active: {dt.days} days ago ({mtime.strftime('%b %-d')})")
-    else:
-      print(f"  Active: {dt.days} days ago ({mtime.strftime('%-m/%-d/%Y')})")
+  print(utils.last_active(home))
 else:
   print("  Active: N/A")
-if spon: print(" Sponsor:")
+if spon: print(" Sponsor:")  # completed below
 
 ######################
 ## home directories ##
 ######################
 import csv
 flnm = "/home/jdh4/bin/cron/combined_ls.csv"
-with open(flnm, mode='r') as csv_file:
-  csv_reader = csv.DictReader(csv_file)
-  next(csv_reader)
-  hdirs = []
-  for row in csv_reader:
-    if row["netid"] == netid:
-      hdirs = [hdir for hdir in list(row.values())[1:] if hdir != '']
-      break
-if hdirs:
+home_dirs = []
+if os.path.isfile(flnm):
+  with open(flnm, mode='r') as csv_file:
+    csv_reader = csv.DictReader(csv_file)
+    next(csv_reader)
+    for row in csv_reader:
+      if row["netid"] == netid:
+        home_dirs = [hdir for hdir in list(row.values())[1:] if hdir != '']
+        break
+if home_dirs:
   with term.location(65, 4):
     print("/home")
-    for hdir in sorted(hdirs):
+    for hdir in sorted(home_dirs):
       pre = "*" if hdir in host else " "
       print(term.move_x(67) + pre + hdir)
 

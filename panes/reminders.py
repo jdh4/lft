@@ -120,6 +120,7 @@ def get_reminders(term, gutter, flnm, host, days_away=7):
           elif (dt.days == 1):
             reminders.append(f"{gutter}{event} is {term.bold}{term.red}tomorrow{term.normal}")
           else:
+            when = when.strftime("%A, %b %-d")
             reminders.append(f"{gutter}{event} in {dt.days} days on {when}")
   else:
     reminders.append(f"Warning: {flnm} not found")

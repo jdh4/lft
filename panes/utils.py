@@ -19,6 +19,26 @@ def public_or_private(path):
   else:
     return f"{path}: private"
 
+def last_active(home):
+  mtime = datetime.fromtimestamp(os.stat(home).st_mtime)
+  dt = datetime.today() - mtime
+  if dt.days == 0:
+    hours = dt.seconds // 3600
+    minutes = dt.seconds // 60
+    if hours > 1:
+      return f"  Active: {hours} hours ago"
+    elif minutes > 1:
+      return f"  Active: {minutes} minutes ago"
+    else:
+      return f"  Active: {dt.seconds} seconds ago"
+  elif dt.days == 1:
+    return f"  Active: yesterday"
+  else:
+    if dt.days <= 365:
+      return "  Active: {dt.days} days ago ({mtime.strftime('%b %-d')})"
+    else:
+      return f"  Active: {dt.days} days ago ({mtime.strftime('%-m/%-d/%Y')})"
+
 def print_packages(term, gutter, width, pkgs, red, green, max_chars=14):
   color = []
   for pkg in pkgs:
