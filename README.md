@@ -46,19 +46,18 @@ Options:
 + look for a `.condarc` file and follow the `conda_envs` path to Conda environments.
 + list Python packages found in `~/.local/lib/pythonX.Y/site-packages`.
 + report on custom installations of Anaconda or Miniconda.
-
 + show when OnDemand Jupyter, RStudio, MATLAB or Stata was last used.
-+ identify OnDemand jobs and replace the job name with either `O-JUPYTER`, `O-RSTUDIO`, `O-MATLAB` or `O-STATA` instead of, e.g., `sys/dashboard/sys/jupyter`.
-
 + list existence of R libraries and packages found in `~/R/x86_64-redhat-linux-gnu-library/X.Y` as well as Conda environments in `~/.conda/envs` (packages are printed with color coding to highlight parallel packages).
-+ list R packages found in Conda environemnts
-+ list Julia packages found in `~/.julia/packages` (with `-v` option for verbose output)
-+ show which MATLAB modules the user has used and when they last used OnDemand MATLAB
-+ show which Stata modules the user has used and when they last used OnDemand Stata
-+ show the user's fairshare value, 30-day group usage and group share of the cluster
-+ compute the memory and time efficiency of each job. The `MT` column report the memory efficiency (M) and the time efficiency (T) which is the elapsed time of the job divided by the allocated time. Both of the these quantities are scaled to be between 0 and 9.
-+ show the job state's of F, TO and OOM is red.
-+ show the previous and upcoming downtime, RC workshops, reservations on Adroit for RC workshops and all university holidays
++ list R `LOCK` files.
++ show when OnDemand RStudio was last used.
++ list Julia packages found in `~/.julia/packages` with color coding.
++ show which MATLAB environment modules the user loaded and when OnDemand MATLAB was last used.
++ show which Stata versions the user has used and when OnDemand Stata was last used.
++ show the user's fairshare value, 30-day group usage, group share of the cluster and number of running and queued jobs.
++ show most recent jobs according to `sacct` including an `MT` column report which reports the memory efficiency (M) and the time efficiency (T) where both of the these independent quantities are scaled to be between 0 and 9 (time efficiency is the elapsed time of the job divided by the runtime limit).
++ show the job state's of F, TO, OOM, NF in red.
++ identify OnDemand jobs and replace the job name with either `O-JUPYTER`, `O-RSTUDIO`, `O-MATLAB` or `O-STATA` instead of, e.g., `sys/dashboard/sys/jupyter`.
++ show the previous and upcoming downtime, RC workshops, reservations on Adroit and all university holidays.
 
 ## Notes for jdh4
 
