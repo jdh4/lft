@@ -44,7 +44,12 @@ Options:
 + It checks for the use of miniconda or Anaconda.
 + If it find a .condarc file it will attempt to follow the conda_envs path to obtain information about Conda environments.
 + Identify OnDemand jobs and replace the job name with either `O-JUPYTER`, `O-RSTUDIO`, `O-MATLAB` or `O-STATA`.
++ show which MATLAB modules the user has used and when they last used MATLAB OnDemand
++ show which Stata modules the user has used and when they last used Stata OnDemand
++ show the user's fairshare value, 30-day group usage and group share of the cluster
 + compute the memory and time efficiency of each job. The `MT` column report the memory efficiency (M) and the time efficiency (T) which is the elapsed time of the job divided by the allocated time. Both of the these quantities are scaled to be between 0 and 9.
++ show the job state's of F, TO and OOM is red.
++ show the previous and upcoming downtime, RC workshops, reservations on Adroit for RC workshops and all university holidays
 
 ## Notes for jdh4
 
