@@ -238,7 +238,6 @@ if spon:
 ## python ##
 ############
 from panes import python as py
-# TODO look in .condarc to know where to search for envs
 if home_exists and home_rx:
   py.python_packages(netid, evars, term, gutter, width, verbose)
 
@@ -254,14 +253,26 @@ if home_exists and home_rx:
 ############
 ## matlab ##
 ############
-#TODO ondemand
+opath = f"{home}/ondemand/data/sys/dashboard/batch_connect/sys/matlab/output"
+ondemand = isdir(opath)
 path = home + '/.matlab'
-if home_exists and home_rx and isdir(path):
-  if utils.is_rx(path):
-    divider(term.bold('MATLAB'), '', gutter, width)
-    # versions used via slurm or interactively
-    versions_used = os.listdir(path)
-    print(gutter + ' '.join(versions_used))
+if home_exists and home_rx and (isdir(path) or ondemand):
+  divider(term.bold("MATLAB"), "", gutter, width)
+  if isdir(path) and utils.is_rx(path):
+    versions = sorted(os.listdir(path))
+    if versions: print(gutter + " ".join([v for v in versions if "R20" in v]))
+  if ondemand: utils.ondemand_last_used("MATLAB", opath, gutter)
+
+###########
+## stata ##
+###########
+opath = f"{home}/ondemand/data/sys/dashboard/batch_connect/sys/xstata/output"
+ondemand = isdir(opath)
+versions = [f"Stata {i}" for i in range(12, 18) if isdir(f"{home}/.stata{i}")]
+if home_exists and home_rx and (versions or ondemand):
+  divider(term.bold("Stata"), "", gutter, width)
+  if versions: print(gutter + " ".join(sorted(versions)))
+  if ondemand: utils.ondemand_last_used("Stata", opath, gutter)
 
 ###########################
 ## current and past jobs ##
@@ -281,15 +292,13 @@ if home_exists and host != "tigressdata":
   for line in lines:
     print(line)
 
-# .allinea TODO
-
 ###############
 ## reminders ##
 ###############
 from panes import reminders as rms
 
 downtime = rms.previous_and_next_downtime_dates(term, gutter)
-reservations = [] if host == "tigressdata" else rms.get_reservations(term, gutter, days_away=10)
+reservations = rms.get_reservations(term, gutter, days_away=10) if host == "adroit" else []
 reminders = rms.get_reminders(term, gutter, "holidays.csv", host, days_away=10)
 reminders.extend(rms.get_reminders(term, gutter, "rc_workshops.csv", host, days_away=3))
 

@@ -79,8 +79,8 @@ def r_packages(netid, evars, term, gutter, width, verbose):
               print(f"{path} is private")
 
   # R misc
-  opath = f"/home/{netid}/ondemand/data/sys/dashboard/batch_connect/sys/rstudio_server"
-  ondemand = isdir(opath) and utils.is_rx(opath)
+  opath = f"/home/{netid}/ondemand/data/sys/dashboard/batch_connect/sys/rstudio_server/output"
+  ondemand = isdir(opath)
   rlibs = evars["rlibs"]
   rlibsuser = evars["rlibsuser"]
   path = f"/home/{netid}/.R/Makevars"
@@ -90,25 +90,7 @@ def r_packages(netid, evars, term, gutter, width, verbose):
       print(f"{gutter}{term.bold}{term.red}{path}{term.normal}")
     if rlibs[0]: print(f"{gutter}R_LIBS set in ~/{rlibs[1]}")
     if rlibsuser[0]: print(f"{gutter}R_LIBS_USER set in ~/{rlibsuser[1]}")
-    if ondemand:
-      #TODO need to check all dates within .rstudio folder
-      today = datetime.today().date()
-      year = today.year
-      month = today.month
-      opath = f"/home/{netid}/.rstudio"
-      if not isdir(opath): return None
-      mtime = datetime.fromtimestamp(os.stat(opath).st_mtime)
-      if mtime.date() == today:
-        print(f"{gutter}OnDemand RStudio (today)")
-      elif mtime.year == today.year:
-        frmt = "(%b %d)"
-        mtime = mtime.strftime(frmt)
-        print(f"{gutter}OnDemand RStudio {mtime}")
-      else:
-        frmt = "(%b %d %Y)"
-        mtime = mtime.strftime(frmt)
-        print(f"{gutter}OnDemand RStudio {mtime}")
-
+    if ondemand: utils.ondemand_last_used("RStudio", opath, gutter)
   return None
 
 ###########

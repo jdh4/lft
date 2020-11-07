@@ -136,7 +136,16 @@ def format_qos(x):
           .replace("long", "lg").replace("test", "ts")
 
 def format_jobname(x):
-  return x if len(x) <= 8 else x[:7] + "+"
+  x = x.strip()
+  if x == "sys/dashboard/sys/jupyter":
+    x = "O-JUPYTER"
+  elif x == "sys/dashboard/sys/matlab":
+    x = "O-MATLAB"
+  elif x == "sys/dashboard/sys/rstudio_server":
+    x = "O-RSTUDIO"
+  elif x == "sys/dashboard/sys/xstata":
+    x = "O-STATA"
+  return x if len(x) <= 9 else x[:8] + "+"
 
 def cmt_efficiency(elapraw, limitraw, reqmem, nnodes, ncpus, maxrss):
   # compute ratio of used to allocated time
@@ -171,8 +180,10 @@ def cmt_efficiency(elapraw, limitraw, reqmem, nnodes, ncpus, maxrss):
     M = " "
   return f"{M}{T}"
 
-def get_maxrss(lines):
-  #TODO as junk line at end to get last row
+def get_maxrss(x):
+  # add dummy line in order to get memory of last row
+  lines = x[::]
+  lines.append("|||")
   maxmem = {}
   jobid_prev = lines[0].split("|")[0]
   if ("." in jobid_prev): return maxmem
@@ -230,14 +241,16 @@ def align_columns(rows, cols, max_width, term, gutter, host):
       fieldraw = getattr(row, col)
       field = " " * max_width[col] + fieldraw + " " * dpadding * 0
       field = field[-max_width[col]:]
-      if col == "state" and fieldraw in ("TO", "OOM"):
+      if col == "state" and fieldraw in ("TO", "OOM", "F", "NF", "BF"):
         field = f"{term.bold}{term.red}{field}{term.normal}"
+      if col == "jobname" and fieldraw in ("O-JUPYTER", "O-RSTUDIO", "O-MATLAB", "O-STATA"):
+        field = f"{term.bold}{term.green}{field}{term.normal}"
       line += field + "  "
     sct.append(line)
   return sct
 
 def sacct(term, gutter, verbose, host, netid, days=3):
-  """Return output of sacct over the last N days."""
+  """Return output of sacct over the last N days. The is a messy and confusing routine."""
   state = {
   'BF'  :'BOOT_FAIL',
   'CLD' :'CANCELLED',
@@ -260,9 +273,9 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
   # sacct -u hzerze -S 09/24 -o jobid%20,state,start,elapsed,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8
   if (host == "tiger" or host == "adroit" or host == "traverse"):
-    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,reqgres,qos,jobname%8,maxrss"
+    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,reqgres,qos,jobname%40,maxrss"
   else:
-    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,qos,jobname%8,maxrss"
+    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,qos,jobname%40,maxrss"
   #cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p | egrep -v '[0-9].extern|[0-9].batch|[0-9]\.[0-9]\|'"
   cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p"
   output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
@@ -281,7 +294,9 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   else:
     try:
       maxmem_per_job = get_maxrss(lines)
+      #print(lines)
       #print(maxmem_per_job)
+      #breakpoint()
       max_width = dict(zip(columns, [0] * len(columns)))
       overall = []
       for line in lines:

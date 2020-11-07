@@ -17,7 +17,6 @@ from panes import utils
 from panes.utils import divider
 
 # TODO: nobel, anaconda lib (mpich)
-# TODO should pass term instead of making new one
 
 def clean_python_packages(pkgs):
   noshow = ['lib', 'bin', '__pycache__', 'six', 'pasta', 'pip', 'wheel', \
@@ -37,6 +36,21 @@ def check_python(printed_divider, term, gutter, width):
     divider(term.bold('Python'), '', gutter, width)
   return True
 
+def condarc_path(netid):
+  # this function extracts the path like below  
+  # envs_dirs:
+  # - /scratch/gpfs/jdh4/CONDA/envs
+
+  path = f"/home/{netid}/.condarc"
+  if os.path.isfile(path):
+    # assume file is readable
+    with open(path, "r") as f:
+      lines = f.readlines()
+    for i, line in enumerate(lines):
+      if "envs_dirs:" in line:
+        return lines[i + 1].replace("-", "").strip()
+  return None
+
 def python_packages(netid, evars, term, gutter, width, verbose):
   versions = ['2.6', '2.7', '3.6', '3.7', '3.8']
   frmt = "(%b %Y)"
@@ -49,47 +63,56 @@ def python_packages(netid, evars, term, gutter, width, verbose):
   printed_divider = False
   print_single = False
 
+  paths = [f"/home/{netid}/.conda"]
+  paths_envs = [f"/home/{netid}/.conda/envs"]
+
+  condarc_envs_path = condarc_path(netid)
+  if condarc_envs_path:
+    x = "/".join(condarc_envs_path.split("/")[:-1])
+    paths.append(x)
+    paths_envs.append(condarc_envs_path)
+
   # conda environments
-  path = f"/home/{netid}/.conda"
-  if isdir(path):
-    if utils.is_rx(path):
-      path = f"/home/{netid}/.conda/envs"
-      if isdir(path):
-        if utils.is_rx(path):
-          envs = os.listdir(path)
-          if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
-          for env in envs:
-            success_per_env = False
-            for version in versions:
-              path = f"/home/{netid}/.conda/envs/{env}/lib/python{version}/site-packages"
-              r_env = True if isdir(f"/home/{netid}/.conda/envs/{env}/lib/R") else False
-              if isdir(path) and utils.is_rx(path) and not r_env:
-                success_per_env = True
-                if verbose:
-                  printed_divider = check_python(printed_divider, term, gutter, width)
-                  if print_single and printed_divider: print('-' * width)
-                  mtime = datetime.fromtimestamp(os.stat(f"/home/{netid}/.conda/envs/{env}").st_mtime)
-                  mtime = mtime.strftime(frmt)
-                  print(f"     ~/.conda/envs/{term.bold}{env}{term.normal}/lib/python"
-                        f"{version}/site-packages {mtime}")
-                  pkgs = os.listdir(path)
-                  pkgs = [pkg for pkg in pkgs if isdir(os.path.join(path, pkg))]
-                  pkgs = clean_python_packages(pkgs)
-                  utils.print_packages(term, gutter, width, pkgs, red, green, max_chars=13)
-                  print_single = True
-                else:
-                  printed_divider = check_python(printed_divider, term, gutter, width)
-                  print(f"{gutter}~/.conda/envs/{term.bold}{env}{term.normal}")
-                  print_single = True
-            if not success_per_env and not r_env:
-              printed_divider = check_python(printed_divider, term, gutter, width)
-              print(f"{gutter}~/.conda/envs/{env}: exists")
-        else:
-          printed_divider = check_python(printed_divider, term, gutter, width)
-          print(f"{gutter}~/.conda/envs: private")
-    else:
-      printed_divider = check_python(printed_divider, term, gutter, width)
-      print(f"{gutter}~/.conda: private")
+  for i, path in enumerate(paths):
+    if isdir(path):
+      if utils.is_rx(path):
+        pe = paths_envs[i]
+        if isdir(pe):
+          if utils.is_rx(pe):
+            envs = os.listdir(pe)
+            if '.conda_envs_dir_test' in envs: envs.remove('.conda_envs_dir_test')
+            for env in envs:
+              success_per_env = False
+              for version in versions:
+                path_site = f"{pe}/{env}/lib/python{version}/site-packages"
+                r_env = True if isdir(f"{pe}/{env}/lib/R") else False
+                if isdir(path_site) and utils.is_rx(path_site) and not r_env:
+                  success_per_env = True
+                  if verbose:
+                    printed_divider = check_python(printed_divider, term, gutter, width)
+                    if print_single and printed_divider: print('-' * width)
+                    mtime = datetime.fromtimestamp(os.stat(f"{pe}/{env}").st_mtime)
+                    mtime = mtime.strftime(frmt)
+                    print(f"     {pe}/{term.bold}{env}{term.normal}/lib/python"
+                          f"{version}/site-packages {mtime}")
+                    pkgs = os.listdir(path_site)
+                    pkgs = [pkg for pkg in pkgs if isdir(os.path.join(path_site, pkg))]
+                    pkgs = clean_python_packages(pkgs)
+                    utils.print_packages(term, gutter, width, pkgs, red, green, max_chars=13)
+                    print_single = True
+                  else:
+                    printed_divider = check_python(printed_divider, term, gutter, width)
+                    print(f"{gutter}{pe}/{term.bold}{env}{term.normal}")
+                    print_single = True
+              if not success_per_env and not r_env:
+                printed_divider = check_python(printed_divider, term, gutter, width)
+                print(f"{gutter}{pe}/{env}: exists")
+          else:
+            printed_divider = check_python(printed_divider, term, gutter, width)
+            print(f"{gutter}{pe}: private")
+      else:
+        printed_divider = check_python(printed_divider, term, gutter, width)
+        print(f"{gutter}{path}: private")
 
   # .local (pip install --user <package>)
   path = f"/home/{netid}/.local"
@@ -119,7 +142,7 @@ def python_packages(netid, evars, term, gutter, width, verbose):
   # .local does not exist or is private
   path = f"/home/{netid}/.local"
   dot_local_exists = True if isdir(path) else False
-  dot_local_private = False # TODO ugly
+  dot_local_private = False # TODO rewrite
   if dot_local_exists:
     dot_local_private = True if not utils.is_rx(path) else False
 
@@ -135,10 +158,11 @@ def python_packages(netid, evars, term, gutter, width, verbose):
   anaconda = evars['anaconda']
   miniconda = evars['miniconda']
 
-  opath = f"/home/{netid}/ondemand/data/sys/dashboard/batch_connect/sys/jupyter"
-  ondemand = isdir(opath) and utils.is_rx(opath)
+  opath = f"/home/{netid}/ondemand/data/sys/dashboard/batch_connect/sys/jupyter/output"
+  ondemand = isdir(opath)
 
-  if not dot_local_exists or dot_local_private or condarc or pythonpath[0] or anaconda or miniconda or ondemand:
+  if not dot_local_exists or dot_local_private or condarc or pythonpath[0] or anaconda \
+     or miniconda or ondemand:
     printed_divider = check_python(printed_divider, term, gutter, width)
     if print_single and printed_divider: print('-' * width)
 
@@ -151,22 +175,4 @@ def python_packages(netid, evars, term, gutter, width, verbose):
     if anaconda: print(f"{gutter}anaconda: yes")
     if miniconda: print(f"{gutter}miniconda: yes")
     #if dot_cache and printed_divider: print(f"{gutter}~/.cache")
-    if ondemand:
-      today = datetime.today().date()
-      year = today.year
-      month = today.month
-      opath = f"/home/{netid}/.jupyter"
-      if not isdir(opath):
-        print(f"{gutter}~/.jupyter not found")
-        return None
-      mtime = datetime.fromtimestamp(os.stat(opath).st_mtime)
-      if mtime.date() == today:
-        print(f"{gutter}OnDemand Jupyter (today)")
-      elif mtime.year == today.year:
-        frmt = "(%b %d)"
-        mtime = mtime.strftime(frmt)
-        print(f"{gutter}OnDemand Jupyter {mtime}")
-      else:
-        frmt = "(%b %d %Y)"
-        mtime = mtime.strftime(frmt)
-        print(f"{gutter}OnDemand Jupyter {mtime}")
+    if ondemand: utils.ondemand_last_used("Jupyter", opath, gutter)

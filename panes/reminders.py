@@ -108,12 +108,12 @@ def get_reminders(term, gutter, flnm, host, days_away=7):
   if os.path.isfile(flnm):
     with open(flnm, mode='r') as csv_file:
       csv_reader = csv.DictReader(csv_file)
-      for row in csv_reader:
+      result = sorted(csv_reader, key=lambda d: d["date"])
+      for row in result:
         event = row["event"]
         when = datetime.strptime(row["date"], "%m/%d/%Y").date()
         today = datetime.today().date()
         dt = when - today
-        # TODO sort by date all reminders
         if (0 <= dt.days <= days_away):
           if (dt.days == 0):
             reminders.append(f"{gutter}{event} is {term.bold}{term.red}today{term.normal}")

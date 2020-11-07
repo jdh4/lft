@@ -1,15 +1,16 @@
 #!/bin/bash
-cd /tigress/jdh4/python-devel/lft
 
 # update master file for home directions
-./cron/clusters_ls_home.sh
-./cron/combine_ls.py
+cd /tigress/jdh4/python-devel/lft/cron
+./clusters_ls_home.sh
+./combine_ls.py
 
 # update master file for getent passwd
 # ./cron/clusters_getent_passwd.sh
 # ./cron/combine_getent.py
 
 # tiger cluster
+cd /tigress/jdh4/python-devel/lft
 rm -rf panes/__pycache__
 cp -p lft    $HOME/bin
 cp -r panes  $HOME/bin
@@ -19,7 +20,7 @@ cp    cron/*.csv $HOME/bin/cron
 # other clusters
 for cluster in adroit della perseus tigressdata traverse
 do
-  echo == ${cluster} ==
+  echo ${cluster}
   scp    lft    jdh4@${cluster}.princeton.edu:/home/jdh4/bin
   scp -r panes  jdh4@${cluster}.princeton.edu:/home/jdh4/bin
   scp -r remind jdh4@${cluster}.princeton.edu:/home/jdh4/bin
