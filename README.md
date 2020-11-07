@@ -31,9 +31,10 @@ Options:
 
 `lft` runs multiple commands such as ldapsearch, groups, sponsor_report, sshare, sacct, squeue, scontrol show reservation. It also crawls the user's `/home` directory in identifying installed software and potential problems with it.
 
-`lft' will:
+`lft` will:
 
-+ identify an email alias and automatically use the netid.
++ run `ldapsearch` to get the full name, department and position of the user. This call takes 1-2 seconds which explains why `lft` seems to hang at the start.
++ convert an email alias to the netid of the user (e.g., `halverson` is converted to `jdh4`)
 + show all the clusters where the user has a /home directory. This information is updated every 2 hours M-F from 8 AM to 6 PM.
 + scan `.bashrc` and `.bash_profile` files looking for the loading of environment modules. It also identifies when certain enivronment variables are set such as `PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`.
 + It checks for the use of miniconda or Anaconda.
