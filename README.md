@@ -35,12 +35,12 @@ Options:
 
 + run `ldapsearch` to get the full name, department and position of the user (this takes 1-2 seconds which explains why `lft` seems to hang at the start).
 + convert an email alias to the netid of the user (e.g., `halverson` is converted to `jdh4`).
-+ run `groups` and display the groups of the user.
++ display the groups of the user.
 + show when user was last active as determined by the modification time of `/home`.
 + optionally run `sponsor_report` to show the user's sponsor (e.g., `lft aturing -s`).
 + display the user's login shell if not `/bin/bash` (e.g., `/bin/zsh`, `/bin/tcsh`).
-+ show all the clusters where the user has a `/home` directory (this information is updated every 2 hours M-F from 8 AM to 6 PM).
-+ scan `.bashrc` and `.bash_profile` looking for the loading of environment modules and the setting of important environment modules (`PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`) while reporting the state of each startup script as either `default` or `custom`.
++ show all the clusters where the user has a `/home` directory (this information is updated every 2 hours M-F from 8 am to 6 pm).
++ scan `.bashrc` and `.bash_profile` looking for the loading of environment modules and the setting of important environment variables (`PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`) while reporting the state of each startup script as either `default` or `custom`.
 + show which top-level directories are world-readable (`/home`, `/tigress`, `/scratch/gpfs`) and the number of items in each.
 + list Conda environments in `~/.conda/envs` as well as the packages (if `-v` option) with color coding.
 + look for a `.condarc` file and follow the `conda_envs` path to Conda environments.
