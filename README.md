@@ -33,7 +33,7 @@ Options:
 
 `lft` will:
 
-+ run `ldapsearch` to get the full name, department and position of the user (his call takes 1-2 seconds which explains why `lft` seems to hang at the start).
++ run `ldapsearch` to get the full name, department and position of the user (this takes 1-2 seconds which explains why `lft` seems to hang at the start).
 + convert an email alias to the netid of the user (e.g., `halverson` is converted to `jdh4`).
 + run `groups` and display the groups of the user.
 + show when user was last active as determined by the modification time of `/home`.
