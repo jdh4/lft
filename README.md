@@ -2,6 +2,8 @@
 
 `lft` is a Python code that tries to identify problems with the a user's startup scripts, software installations and jobs. It generates information by crawling the  user's `/home` directory and running numerous commands.
 
+`lft` runs multiple commands such as ldapsearch, groups, sponsor_report, sshare, sacct, squeue, scontrol show reservation. It also crawls the user's `/home` directory in identifying installed software and potential problems with it.
+
 ## How to use
 
 Add this line to your `~/.bashrc` file on each cluster (Adroit, Della, Perseus, Tiger, Tigressdata and Traverse):
@@ -28,8 +30,6 @@ Options:
 ## Example
 
 ## What does it do?
-
-`lft` runs multiple commands such as ldapsearch, groups, sponsor_report, sshare, sacct, squeue, scontrol show reservation. It also crawls the user's `/home` directory in identifying installed software and potential problems with it.
 
 `lft` will:
 
