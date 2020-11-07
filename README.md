@@ -29,16 +29,18 @@ Options:
 
 ## Example
 
-## What does it do?
+## What exactly does it do?
 
 `lft` will:
 
-+ run `ldapsearch` to get the full name, department and position of the user. This call takes 1-2 seconds which explains why `lft` seems to hang at the start.
-+ convert an email alias to the netid of the user (e.g., `halverson` is converted to `jdh4`)
-+ show all the clusters where the user has a /home directory. This information is updated every 2 hours M-F from 8 AM to 6 PM.
-+ scan `.bashrc` and `.bash_profile` files looking for the loading of environment modules. It also identifies when certain enivronment variables are set such as `PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`.
-+ It checks for the use of miniconda or Anaconda.
-+ If it find a .condarc file it will attempt to follow the conda_envs path to obtain information about Conda environments.
++ run `ldapsearch` to get the full name, department and position of the user (his call takes 1-2 seconds which explains why `lft` seems to hang at the start).
++ convert an email alias to the netid of the user (e.g., `halverson` is converted to `jdh4`).
++ run `groups` and display the groups of the user.
++ optionally run `sponsor_report` to show the user's sponsor (e.g., `lft aturing -s`).
++ show all the clusters where the user has a `/home` directory (this information is updated every 2 hours M-F from 8 AM to 6 PM).
++ scan `.bashrc` and `.bash_profile` looking for the loading of environment modules and the setting of important environment modules (`PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`) while reporting the state of each startup script as either `default` or `custom`.
++ check and report on the use of Anaconda or Miniconda.
++ look for a `.condarc` file. it will attempt to follow the conda_envs path to obtain information about Conda environments.
 + Identify OnDemand jobs and replace the job name with either `O-JUPYTER`, `O-RSTUDIO`, `O-MATLAB` or `O-STATA`.
 + show when last active as determine by the modification time of `/home`
 + show which filesystems are world-readable (`/home`, `/tigress`, `/scratch/gpfs`)
