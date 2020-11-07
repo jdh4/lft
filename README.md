@@ -36,18 +36,21 @@ Options:
 + run `ldapsearch` to get the full name, department and position of the user (his call takes 1-2 seconds which explains why `lft` seems to hang at the start).
 + convert an email alias to the netid of the user (e.g., `halverson` is converted to `jdh4`).
 + run `groups` and display the groups of the user.
++ show when user was last active as determined by the modification time of `/home`.
 + optionally run `sponsor_report` to show the user's sponsor (e.g., `lft aturing -s`).
++ display the user's login shell if not `/bin/bash` (e.g., `/bin/zsh`, `/bin/tcsh`).
 + show all the clusters where the user has a `/home` directory (this information is updated every 2 hours M-F from 8 AM to 6 PM).
 + scan `.bashrc` and `.bash_profile` looking for the loading of environment modules and the setting of important environment modules (`PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`) while reporting the state of each startup script as either `default` or `custom`.
-+ check and report on the use of Anaconda or Miniconda.
-+ look for a `.condarc` file. it will attempt to follow the conda_envs path to obtain information about Conda environments.
-+ Identify OnDemand jobs and replace the job name with either `O-JUPYTER`, `O-RSTUDIO`, `O-MATLAB` or `O-STATA`.
-+ show when last active as determine by the modification time of `/home`
-+ show which filesystems are world-readable (`/home`, `/tigress`, `/scratch/gpfs`)
-+ list Conda environments in `~/.conda/envs` as well as the packages (with `-v` option for verbose output)
-+ list Python packages found in `~/.local`
-+ list R packages found in `~/R/`
-+ parallel R packages and problematic packages are color coded
++ show which top-level directories are world-readable (`/home`, `/tigress`, `/scratch/gpfs`) and the number of items in each.
++ list Conda environments in `~/.conda/envs` as well as the packages (if `-v` option) with color coding.
++ look for a `.condarc` file and follow the `conda_envs` path to Conda environments.
++ list Python packages found in `~/.local/lib/pythonX.Y/site-packages`.
++ report on custom installations of Anaconda or Miniconda.
+
++ show when OnDemand Jupyter, RStudio, MATLAB or Stata was last used.
++ identify OnDemand jobs and replace the job name with either `O-JUPYTER`, `O-RSTUDIO`, `O-MATLAB` or `O-STATA` instead of, e.g., `sys/dashboard/sys/jupyter`.
+
++ list existence of R libraries and packages found in `~/R/x86_64-redhat-linux-gnu-library/X.Y` as well as Conda environments in `~/.conda/envs` (packages are printed with color coding to highlight parallel packages).
 + list R packages found in Conda environemnts
 + list Julia packages found in `~/.julia/packages` (with `-v` option for verbose output)
 + show which MATLAB modules the user has used and when they last used OnDemand MATLAB
