@@ -1,20 +1,13 @@
 # lft is looking for trouble
 
-This command crawls the /home directory of a specified user and reports on their configuration and jobs.
-
-- it can find the true netid when given an alias (thanks to R. Knight)
-- identifies MATLAB users
+lft is a Python code that tries to identify problems with the a user's startup scripts, software installations and jobs. It generates information by crawling the  user's `/home` directory and running numerous commands.
 
 ## How to use
 
-Add this line to your `~/.bashrc` file on each cluster (including Adroit and Tigressdata) and then source:
+Add this line to your `~/.bashrc` file on each cluster (Adroit, Della, Perseus, Tiger, Tigressdata and Traverse):
 
 ```
 alias lft='/home/jdh4/bin/lft'
-```
-
-```
-$ source ~/.bashrc
 ```
 
 To get started look at the help menu:
