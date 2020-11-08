@@ -42,6 +42,8 @@ Options:
 + show all the clusters where the user has a `/home` directory (this information is updated every 2 hours M-F from 8 am to 6 pm).
 + scan `.bashrc` and `.bash_profile` looking for the loading of environment modules and the setting of important environment variables (`PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`) while reporting the state of each startup script as either `default` or `custom`.
 + show which top-level directories are world-readable (`/home`, `/tigress`, `/scratch/gpfs`) and the number of items in each.
+
+#### Python
 + list Conda environments in `~/.conda/envs` as well as the packages (if `-v` option) with color coding.
 + look for a `.condarc` file and follow the `conda_envs` path to Conda environments.
 + list Python packages found in `~/.local/lib/pythonX.Y/site-packages`.
@@ -50,6 +52,8 @@ Options:
 + list existence of R libraries and packages found in `~/R/x86_64-redhat-linux-gnu-library/X.Y` as well as Conda environments in `~/.conda/envs` (packages are printed with color coding to highlight parallel packages).
 + report the existence of `~/.R/Makevars` and  R `LOCK` files.
 + show when OnDemand RStudio was last used.
+
+#### Julia
 + list Julia packages found in `~/.julia/packages` with color coding.
 + show which MATLAB environment modules the user loaded and when OnDemand MATLAB was last used.
 + show which Stata versions the user has used and when OnDemand Stata was last used.
