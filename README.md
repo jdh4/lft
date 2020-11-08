@@ -35,7 +35,7 @@ Options:
 + runs `ldapsearch` to get the full name, department and position of the user (this takes 1-2 seconds which explains why `lft` seems to hang at the start).
 + converts an email alias to the netid of the user (e.g., `halverson` is converted to `jdh4`).
 + displays the groups of the user.
-+ shows when user was last active as determined by the modification time of `/home`.
++ shows when the user was last active as determined by the modification time of `/home`.
 + optionally runs `sponsor_report` to show the user's sponsor (e.g., `lft aturing -s`).
 + displays the user's login shell if not `/bin/bash` (e.g., `/bin/zsh`, `/bin/tcsh`).
 
