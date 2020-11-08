@@ -35,7 +35,7 @@ def sshare(term, gutter, host, netid):
 ## squeue ##
 ############
 def squeue(gutter, host, netid):
-  """Return number of running and queued jobs plus more"""
+  """Return number of running and queued jobs"""
   if host != 'tigressdata':
     cmd = "squeue -u " + netid
     output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
@@ -55,7 +55,8 @@ def squeue(gutter, host, netid):
       if ('ReqNodeNotAvail' in line): reqnode += 1
     if (running or pending):
       if pending:
-        return (f"{gutter}Running: {running}   Pending: {pending} (Priority:{priority}, Dependency:{dependency}, QOSMax+:{qosmax}, ReqNodeNotAvail: {reqnode})")
+        return (f"{gutter}Running: {running}   Pending: {pending} (Priority:{priority},"
+                f" Dependency:{dependency}, QOSMax+:{qosmax}, ReqNodeNotAvail: {reqnode})")
       else:
         return (f"{gutter}Running: {running}   Pending: {pending}")
     else:
@@ -104,6 +105,7 @@ def format_elapsed_time(x):
     return " -- "
 
 def format_start(x):
+  # format of start is 2020-09-13T11:42:34
   if x == "Unknown":
     return x
   else:
@@ -135,6 +137,9 @@ def format_reqgres(x):
 def format_qos(x):
   return x.replace("tiger", "tgr").replace("short", "sh").replace("medium", "med") \
           .replace("long", "lg").replace("test", "ts")
+
+def format_prt(x):
+  return x.replace("serial", "ser")
 
 def format_jobname(x):
   x = x.strip()
@@ -272,22 +277,21 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   state = dict(zip(state.values(), state.keys()))
   # sacct format is YYYY-MM-DD[THH:MM[:SS]]
   start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
-  # sacct -u hzerze -S 09/24 -o jobid%20,state,start,elapsed,ncpus,nnodes,reqmem,partition,reqgres,qos,timelimit,jobname%8
+  # sacct -u hzerze -S 09/24 -n -P -o jobid%20,jobname%40
   if (host == "tiger" or host == "adroit" or host == "traverse"):
-    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,reqgres,qos,jobname%40,maxrss"
+    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,reqgres,qos,maxrss,jobname%40"
   else:
-    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,qos,jobname%40,maxrss"
-  #cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p | egrep -v '[0-9].extern|[0-9].batch|[0-9]\.[0-9]\|'"
-  cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -p"
+    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,qos,maxrss,jobname%40"
+  #cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -P | egrep -v '[0-9].extern|[0-9].batch|[0-9]\.[0-9]\|'"
+  cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -P"
   output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
   lines = output.stdout.split('\n')
  
-  # avoid dependency on pandas by using namedtuple
+  # avoid dependency on pandas (and its slow startup) by using namedtuple
   from collections import namedtuple
   extra_columns = ["MT"]
   columns = [col.split('%')[0] for col in frmt.split(",")] + extra_columns
   Job = namedtuple("Job", columns)
-  #breakpoint()
   sct = []
   if lines[-1] == '': lines = lines[:-1]
   if (lines == []):
@@ -295,9 +299,6 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   else:
     try:
       maxmem_per_job = get_maxrss(lines)
-      #print(lines)
-      #print(maxmem_per_job)
-      #breakpoint()
       max_width = dict(zip(columns, [0] * len(columns)))
       overall = []
       for line in lines:
@@ -305,16 +306,16 @@ def sacct(term, gutter, verbose, host, netid, days=3):
       cut = 24 if verbose else 12 
       if len(overall) > cut: overall = overall[-cut:]
       for line in overall:
-        line = line.replace("||", "|      |")
-        items = line.split("|")[:-1] + [""] * len(extra_columns)
+        items = line.split("|") + [""] * len(extra_columns)
+        items = items[:len(columns)]  # in case "|" character appears in jobname
         j = Job(*items)
-        # format of start is 2020-09-13T11:42:34
         j = j._replace(jobname = format_jobname(j.jobname))
         j = j._replace(start = format_start(j.start))
         j = j._replace(state = format_state(j.state, state))
         j = j._replace(elapsed = format_elapsed_time(j.elapsed))
         if (host == "tiger" or host == "adroit" or host == "traverse"):
           j = j._replace(reqgres = format_reqgres(j.reqgres))
+        j = j._replace(partition = format_prt(j.partition))
         j = j._replace(qos = format_qos(j.qos))
         j = j._replace(reqmem = format_memory(j.reqmem))
         j = j._replace(timelimit = format_elapsed_time(j.timelimit))
@@ -323,7 +324,6 @@ def sacct(term, gutter, verbose, host, netid, days=3):
         for col in columns:
           if len(getattr(j, col)) > max_width[col]: max_width[col] = len(getattr(j, col))
         sct.append(j)
-      #breakpoint()
       sct = align_columns(sct, columns, max_width, term, gutter, host)
     except:
       return [f"{gutter}Misformatted sacct output found"]

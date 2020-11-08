@@ -35,7 +35,7 @@ def analyze_startup_script(flnm, default, evars, netid):
     startup_rm = remove_comments_and_white_space(lines)
     default_rm = remove_comments_and_white_space(default)
     if (startup_rm == default_rm):
-      state = "default"
+      state = "skeleton"
     else:
       state = "custom"
       for line in lines:
