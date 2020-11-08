@@ -33,6 +33,7 @@ Options:
 
 `lft` will:
 
+### who is the user
 + run `ldapsearch` to get the full name, department and position of the user (this takes 1-2 seconds which explains why `lft` seems to hang at the start).
 + convert an email alias to the netid of the user (e.g., `halverson` is converted to `jdh4`).
 + display the groups of the user.
@@ -42,10 +43,10 @@ Options:
 
 #### home directories
 + show all the clusters where the user has a `/home` directory (this information is updated every 2 hours M-F from 8 am to 6 pm).
++ show which top-level directories are world-readable (`/home`, `/tigress`, `/scratch/gpfs`) and the number of items in each.
 
 #### .bashrc and .bash_profile
 + scan `.bashrc` and `.bash_profile` looking for the loading of environment modules and the setting of important environment variables (`PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`) while reporting the state of each startup script as either `default` or `custom`.
-+ show which top-level directories are world-readable (`/home`, `/tigress`, `/scratch/gpfs`) and the number of items in each.
 
 #### Python
 + list Conda environments in `~/.conda/envs` as well as the packages (if `-v` option) with color coding.
