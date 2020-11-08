@@ -51,7 +51,7 @@ Options:
 + looks for a `.condarc` file and follow the `conda_envs` path to Conda environments.
 + lists Python packages found in `~/.local/lib/pythonX.Y/site-packages`.
 + reports on custom installations of Anaconda or Miniconda.
-+ shows when OnDemand Jupyter, RStudio, MATLAB or Stata was last used.
++ shows when OnDemand Jupyter was last used.
 
 #### R
 + lists existence of R libraries and packages found in `~/R/x86_64-redhat-linux-gnu-library/X.Y` as well as Conda environments in `~/.conda/envs` (packages are printed with color coding to highlight parallel packages).
