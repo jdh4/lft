@@ -128,7 +128,8 @@ def format_state(x, state):
   return state[x] if x in state else "--"
 
 def format_reqgres(x):
-  return x.replace("PER_NODE:", "").replace("gpu:tesla_v100", "v100") \
+  return x.replace("PER_NODE:", "").replace("PER_TASK:", "") \
+          .replace("gpu:tesla_v100", "v100") \
           .replace("gpu:tesla_k40c", "k40c").strip()
 
 def format_qos(x):

@@ -9,8 +9,8 @@ from panes import reminders as rm
 from datetime import date
 
 def test_name():
-  name = "Allen M. Turing"
-  assert "Allen Turing" == utils.remove_middle_initial(name)
+  name = "Alan M. Turing"
+  assert "Alan Turing" == utils.remove_middle_initial(name)
 
 def test_hostname_translation():
   hostname = "adroit4"

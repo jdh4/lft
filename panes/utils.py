@@ -89,7 +89,7 @@ def ondemand_last_used(app, opath, gutter):
   elif dt.days <= 31:
     print(f"{gutter}OnDemand {app}: {dt.days} days ago")
   elif dt.days <= 365:
-    frmt = "%b %-d %Y"
+    frmt = "%b %-d"
     mtime = mtime.strftime(frmt)
     print(f"{gutter}OnDemand {app}: {mtime}")
   else:

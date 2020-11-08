@@ -1,4 +1,4 @@
-#!/scratch/gpfs/jdh4/terminal-env/bin/python -u
+#!/home/jdh4/bin/terminal-env/bin/python -u
 
 # post issues to https://github.com/jdh4/lft
 # or write to halverson@princeton.edu

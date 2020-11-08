@@ -1,6 +1,6 @@
 #!/usr/licensed/anaconda3/2020.7/bin/python
 
-# output of "ls /home" for the different clusters is processed
+# output of "ls /home" for the different clusters is combined
 # and written to file
 
 import pandas as pd
