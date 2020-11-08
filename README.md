@@ -39,7 +39,11 @@ Options:
 + show when user was last active as determined by the modification time of `/home`.
 + optionally run `sponsor_report` to show the user's sponsor (e.g., `lft aturing -s`).
 + display the user's login shell if not `/bin/bash` (e.g., `/bin/zsh`, `/bin/tcsh`).
+
+#### home directories
 + show all the clusters where the user has a `/home` directory (this information is updated every 2 hours M-F from 8 am to 6 pm).
+
+#### .bashrc and .bash_profile
 + scan `.bashrc` and `.bash_profile` looking for the loading of environment modules and the setting of important environment variables (`PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`) while reporting the state of each startup script as either `default` or `custom`.
 + show which top-level directories are world-readable (`/home`, `/tigress`, `/scratch/gpfs`) and the number of items in each.
 
@@ -49,16 +53,26 @@ Options:
 + list Python packages found in `~/.local/lib/pythonX.Y/site-packages`.
 + report on custom installations of Anaconda or Miniconda.
 + show when OnDemand Jupyter, RStudio, MATLAB or Stata was last used.
+
+#### R
 + list existence of R libraries and packages found in `~/R/x86_64-redhat-linux-gnu-library/X.Y` as well as Conda environments in `~/.conda/envs` (packages are printed with color coding to highlight parallel packages).
 + report the existence of `~/.R/Makevars` and  R `LOCK` files.
 + show when OnDemand RStudio was last used.
 
 #### Julia
 + list Julia packages found in `~/.julia/packages` with color coding.
+
+#### MATLAB
 + show which MATLAB environment modules the user loaded and when OnDemand MATLAB was last used.
+
+#### Julia
 + show which Stata versions the user has used and when OnDemand Stata was last used.
+
+#### Jobs
 + show the user's fairshare value, 30-day group usage, group share of the cluster and number of running and queued jobs.
 + show most recent jobs according to `sacct` including an `MT` column report which reports the memory efficiency (M) and the time efficiency (T) where both of the these independent quantities are scaled to be between 0 and 9 (time efficiency is the elapsed time of the job divided by the runtime limit).
 + show the job state's of F, TO, OOM, NF in red.
 + identify OnDemand jobs and replace the job name with either `O-JUPYTER`, `O-RSTUDIO`, `O-MATLAB` or `O-STATA` instead of, e.g., `sys/dashboard/sys/jupyter`.
+
+#### Reminders
 + show the previous and upcoming downtime, RC workshops, reservations on Adroit and all university holidays.
