@@ -60,14 +60,14 @@ Options:
 + report the existence of `~/.R/Makevars` and  R `LOCK` files.
 + show when OnDemand RStudio was last used.
 
-#### Julia
-+ list Julia packages found in `~/.julia/packages` with color coding.
-
 #### MATLAB
 + show which MATLAB environment modules the user loaded and when OnDemand MATLAB was last used.
 
-#### Julia
+#### Stata
 + show which Stata versions the user has used and when OnDemand Stata was last used.
+
+#### Julia
++ list Julia packages found in `~/.julia/packages` with color coding.
 
 #### Jobs
 + show the user's fairshare value, 30-day group usage, group share of the cluster and number of running and queued jobs.
