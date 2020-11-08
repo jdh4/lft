@@ -1,4 +1,5 @@
 import os
+from panes import utils
 from blessed import Terminal
 
 ###############################
@@ -28,7 +29,7 @@ def analyze_startup_script(flnm, default, evars, netid):
   exports = 0
   modules = []
   path = f"/home/{netid}/{flnm}"
-  if os.path.isfile(path):
+  if os.path.isfile(path) and utils.is_r(path):
     with open(path) as f:
       lines = f.readlines()
     startup_rm = remove_comments_and_white_space(lines)
@@ -56,7 +57,7 @@ def analyze_startup_script(flnm, default, evars, netid):
         if 'r_libs_user' in line and 'export' in line:
           evars['rlibsuser'] = (True, flnm)
   else:
-    state = "missing"
+    state = "no info"
   return (aliases, exports, modules, state, flnm)
 
 def print_with_modules(al, ex, modules, state, flnm, term, gutter, verbose):

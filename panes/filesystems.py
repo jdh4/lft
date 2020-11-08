@@ -44,7 +44,7 @@ def filesystems(term, gutter, host, netid, width, spon, home_exists, home_rx):
     return fs
 
   if fs: fs = align_on_colon(fs)
-  if not home_exists or not home_rx: print("\n" * fs.height)
+  if not home_exists or not home_rx: print("\n" * (fs.height - 1))
 
   # print filesystems
   with term.location():

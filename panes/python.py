@@ -42,8 +42,7 @@ def condarc_path(netid):
   # - /scratch/gpfs/jdh4/CONDA/envs
 
   path = f"/home/{netid}/.condarc"
-  if os.path.isfile(path):
-    # assume file is readable
+  if os.path.isfile(path) and utils.is_r(path):
     with open(path, "r") as f:
       lines = f.readlines()
     for i, line in enumerate(lines):
@@ -161,8 +160,7 @@ def python_packages(netid, evars, term, gutter, width, verbose):
   opath = f"/home/{netid}/ondemand/data/sys/dashboard/batch_connect/sys/jupyter/output"
   ondemand = isdir(opath)
 
-  if not dot_local_exists or dot_local_private or condarc or pythonpath[0] or anaconda \
-     or miniconda or ondemand:
+  if condarc or pythonpath[0] or anaconda or miniconda or ondemand:
     printed_divider = check_python(printed_divider, term, gutter, width)
     if print_single and printed_divider: print('-' * width)
 

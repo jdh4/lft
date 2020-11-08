@@ -245,7 +245,7 @@ if home_exists and home_rx:
 opath = f"{home}/ondemand/data/sys/dashboard/batch_connect/sys/matlab/output"
 ondemand = isdir(opath)
 path = home + '/.matlab'
-if home_exists and home_rx and (isdir(path) or ondemand):
+if home_exists and home_rx and ((isdir(path) and utils.is_rx(path)) or ondemand):
   divider(term.bold("MATLAB"), "", gutter, width)
   if isdir(path) and utils.is_rx(path):
     versions = sorted(os.listdir(path))
