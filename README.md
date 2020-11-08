@@ -1,8 +1,6 @@
 # lft is looking for trouble
 
-`lft` is a Python code that tries to identify problems with the a user's startup scripts, software installations and jobs. It generates information by crawling the  user's `/home` directory and running numerous commands.
-
-`lft` runs multiple commands such as ldapsearch, groups, sponsor_report, sshare, sacct, squeue, scontrol show reservation. It also crawls the user's `/home` directory in identifying installed software and potential problems with it.
+For a given netid, lft will crawl the `/home` directory of user and run numerous commands before generating a color-coded report which highlights potential problems with the user's startup scripts, software installations and jobs.
 
 ## How to use it?
 
