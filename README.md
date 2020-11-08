@@ -10,7 +10,7 @@ Add this line to your `~/.bashrc` file on each cluster (Adroit, Della, Perseus, 
 alias lft='/home/jdh4/bin/lft'
 ```
 
-To get started look at the help menu:
+Then look at the help menu:
 
 ```
 $ lft -h
