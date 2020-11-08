@@ -31,9 +31,9 @@ Options:
 
 ## What exactly does it do?
 
-`lft` will:
+`lft` does the following:
 
-### who is the user
+#### about the user
 + run `ldapsearch` to get the full name, department and position of the user (this takes 1-2 seconds which explains why `lft` seems to hang at the start).
 + convert an email alias to the netid of the user (e.g., `halverson` is converted to `jdh4`).
 + display the groups of the user.
