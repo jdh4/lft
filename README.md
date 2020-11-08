@@ -42,7 +42,7 @@ Options:
 + display the user's login shell if not `/bin/bash` (e.g., `/bin/zsh`, `/bin/tcsh`).
 
 #### home directories
-+ show all the clusters where the user has a `/home` directory (this information is updated every 2 hours M-F from 8 am to 6 pm).
++ show all the clusters where the user has a `/home` directory (this information is updated every 2 hours M-F from 7:30 am to 5:30 pm).
 + show which top-level directories are world-readable (`/home`, `/tigress`, `/scratch/gpfs`) and the number of items in each.
 
 #### .bashrc and .bash_profile
