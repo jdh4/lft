@@ -6,7 +6,7 @@ from panes import sponsor as sp
 from panes import startup_scripts as ss
 from panes import jobs
 from panes import reminders as rm
-from datetime import datetime
+from datetime import date
 
 def test_name():
   name = "Allen M. Turing"
@@ -39,4 +39,4 @@ def test_timeformat():
   assert jobs.format_elapsed_time(elap) == str(round(2*24 + 23 + 52/60 + 33/3600)) + "h"
 
 def test_2nd_tues():
-  assert rm.second_tues_of_month(2021, 11) == datetime(2021, 11, 9).date()
+  assert rm.second_tues_of_month(2021, 11) == date(2021, 11, 9)

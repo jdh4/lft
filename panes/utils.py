@@ -32,10 +32,10 @@ def last_active(home):
     else:
       return f"  Active: {dt.seconds} seconds ago"
   elif dt.days == 1:
-    return f"  Active: yesterday"
+    return "  Active: yesterday"
   else:
     if dt.days <= 365:
-      return "  Active: {dt.days} days ago ({mtime.strftime('%b %-d')})"
+      return f"  Active: {dt.days} days ago ({mtime.strftime('%b %-d')})"
     else:
       return f"  Active: {dt.days} days ago ({mtime.strftime('%-m/%-d/%Y')})"
 

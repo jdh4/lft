@@ -108,7 +108,7 @@ def format_start(x):
     return x
   else:
     try:
-      start = datetime.strptime(x, "%Y-%m-%dT%H:%M:%S").strftime("%m/%d-%H:%M")
+      start = datetime.strptime(x, "%Y-%m-%dT%H:%M:%S").strftime("%-m/%-d-%H:%M")
     except:
       return "--"
     else:
