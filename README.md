@@ -44,7 +44,7 @@ Options:
 + shows which top-level directories are world-readable (`/home`, `/tigress`, `/scratch/gpfs`) and the number of items in each.
 
 #### .bashrc and .bash_profile
-+ scans `.bashrc` and `.bash_profile` looking for the loading of environment modules and the setting of important environment variables (`PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`) while reporting the state of each startup script as either `default` or `custom`.
++ scans `.bashrc` and `.bash_profile` looking for the loading of environment modules and the setting of important environment variables (`PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`) while reporting the state of each startup script as either `skeleton` or `custom`.
 
 #### Python
 + lists Conda environments in `~/.conda/envs` as well as the packages (if `-v` option) with color coding.
