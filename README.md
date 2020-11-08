@@ -55,7 +55,7 @@ Options:
 
 #### R
 + lists existence of R libraries and packages found in `~/R/x86_64-redhat-linux-gnu-library/X.Y` as well as Conda environments in `~/.conda/envs` (packages are printed with color coding to highlight parallel packages).
-+ reports the existence of `~/.R/Makevars` and  R `LOCK` files.
++ reports the existence of `~/.R/Makevars` and `LOCK` files.
 + shows when OnDemand RStudio was last used.
 
 #### MATLAB
