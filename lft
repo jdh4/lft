@@ -218,7 +218,10 @@ if home_exists:
 ####################
 if spon:
   from panes import sponsor as sp
-  _ = sp.get_sponsor(term, gutter, netid)
+  sponsor_full_name, sponsor = sp.get_sponsor(netid)
+  if sponsor_full_name and sponsor:
+    with term.location():
+      print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
 
 ############
 ## python ##

@@ -21,13 +21,12 @@ from panes import utils
 #
 # Cluster eddy has these users gascione
 
-def get_sponsor(term, gutter, netid):
+def get_sponsor(netid):
 
   cmd = f"sponsor_report {netid}"
   try:
     output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
   except subprocess.TimeoutExpired:
-    #print("sponsor_report timed out looking for", netid)
     sponsor = None
   except:
     # netid not in Princeton LDAP
@@ -55,5 +54,6 @@ def get_sponsor(term, gutter, netid):
           # Manager pdebene (Pablo G. Debenedetti) has sponsored the following users
           sponsor_full_name = line.split('(')[1].split(')')[0]
           sponsor_full_name = utils.remove_middle_initial(sponsor_full_name)
-          with term.location():
-            print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
+          return (sponsor_full_name, sponsor)
+  else:
+    return (None, None)
