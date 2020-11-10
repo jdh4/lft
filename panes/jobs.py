@@ -134,9 +134,14 @@ def format_reqgres(x):
           .replace("gpu:tesla_v100", "v100") \
           .replace("gpu:tesla_k40c", "k40c").strip()
 
-def format_qos(x):
-  return x.replace("tiger", "tgr").replace("short", "sh").replace("medium", "med") \
-          .replace("long", "lg").replace("test", "ts")
+def format_qos(x, host):
+  if host == "della" or host == "adroit":
+    return x
+  elif host == "perseus":
+    return x.replace("pers-", "")
+  else:
+    return x.replace("tiger", "tgr").replace("short", "sh").replace("medium", "med") \
+            .replace("long", "lg").replace("test", "ts")
 
 def format_prt(x):
   return x.replace("serial", "ser")
@@ -316,7 +321,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
         if (host == "tiger" or host == "adroit" or host == "traverse"):
           j = j._replace(reqgres = format_reqgres(j.reqgres))
         j = j._replace(partition = format_prt(j.partition))
-        j = j._replace(qos = format_qos(j.qos))
+        j = j._replace(qos = format_qos(j.qos, host))
         j = j._replace(reqmem = format_memory(j.reqmem))
         j = j._replace(timelimit = format_elapsed_time(j.timelimit))
         maxrss = maxmem_per_job[j.jobid] if j.jobid in maxmem_per_job else -1

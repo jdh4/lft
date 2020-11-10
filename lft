@@ -107,7 +107,7 @@ if p[9]:
  if netid == username:
    print("   NetID:", term.bold(p[9]))
  else:
-   print(f"   NetID: {term.bold(p[9])} ({term.red}{username} is alias{term.normal})")
+   print(f"   NetID: {term.bold(p[9])} ({term.bold}{term.red}{username} is alias{term.normal})")
 if p[0]: print("    Name:", p[0])
 print("  Groups:")  # completed below
 print("    Dept:", p[1]) if p[1] else print("    Dept: unknown")

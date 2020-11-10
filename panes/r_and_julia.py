@@ -108,7 +108,7 @@ def julia_packages(netid, term, gutter, width, verbose):
             divider(term.bold('Julia') + ' (~/.julia/packages)', '', gutter, width)
             noshow = []
             pkgs = sorted(list(set(pkgs) - set(noshow)), key=lambda p: p.lower())
-            green = ['Flux', 'GPUArrays', 'CUDAdrv', 'CUDAnative', 'CuArrays', \
+            green = ['Flux', 'GPUArrays', 'CUDA', 'CUDAdrv', 'CUDAnative', 'CuArrays', \
                      'TensorFlow', 'Knet', 'ScikitLearn']
             red = []
             utils.print_packages(term, gutter, width, pkgs, red, green)
