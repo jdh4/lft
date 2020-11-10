@@ -1,6 +1,6 @@
 # lft is looking for trouble
 
-For a given NetID, `lft` will crawl the user's `/home` directory and run numerous commands before generating a color-coded report that highlights potential problems with the user's startup scripts, software installations and jobs.
+For a given NetID, `lft` will crawl the `/home` directory of the user and run numerous commands before generating a color-coded report that highlights potential problems with the user's startup scripts, software installations and jobs.
 
 ## How to use it?
 
