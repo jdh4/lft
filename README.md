@@ -50,6 +50,7 @@ Options:
 + lists Conda environments in `~/.conda/envs` as well as the packages (if `-v` option) with color coding.
 + looks for a `.condarc` file and follow the `conda_envs` path to Conda environments.
 + lists Python packages found in `~/.local/lib/pythonX.Y/site-packages`.
++ reports key libraries such as `cudnn`, `mpich` (upcoming feature).
 + reports on custom installations of Anaconda or Miniconda.
 + shows when OnDemand Jupyter was last used.
 
