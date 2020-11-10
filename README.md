@@ -27,6 +27,8 @@ Options:
 
 ## Example
 
+![lft_example](https://tigress-web.princeton.edu/~jdh4/lft_example_report.png)
+
 ## What exactly does it do?
 
 `lft` does the following:
