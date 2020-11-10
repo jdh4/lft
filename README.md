@@ -27,7 +27,7 @@ Options:
 
 ## Example
 
-![lft_example](https://tigress-web.princeton.edu/~jdh4/lft_example_report.png)
+![lft_example](https://tigress-web.princeton.edu/~jdh4/lft_example_report.png?123456)
 
 ## What exactly does it do?
 
