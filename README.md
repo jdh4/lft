@@ -50,7 +50,7 @@ Options:
 
 #### Python
 + lists Conda environments in `~/.conda/envs` as well as the packages (if `-v` option) with color coding.
-+ looks for a `.condarc` file and follow the `conda_envs` path to Conda environments.
++ looks for a `.condarc` file and follows the `conda_envs` path to Conda environments.
 + lists Python packages found in `~/.local/lib/pythonX.Y/site-packages`.
 + reports key libraries such as `cudnn`, `mpich` (upcoming feature).
 + reports on custom installations of Anaconda or Miniconda.
@@ -74,7 +74,7 @@ Options:
 + shows the user's fairshare value, 30-day group usage, group share of the cluster and number of running and queued jobs.
 + shows most recent jobs according to `sacct` including an `MT` column which reports the memory efficiency (M) and the time efficiency (T) where both of the these independent quantities are scaled to be between 0 and 9 (time efficiency is the elapsed time of the job divided by the runtime limit).
 + shows `F`, `TO`, `OOM` and `NF` job states in red.
-+ identifies OnDemand jobs and replace the job name with either `O-JUPYTER`, `O-RSTUDIO`, `O-MATLAB` or `O-STATA` instead of, e.g., `sys/dashboard/sys/jupyter`.
++ identifies OnDemand jobs and replaces the job name with either `O-JUPYTER`, `O-RSTUDIO`, `O-MATLAB` or `O-STATA` instead of, e.g., `sys/dashboard/sys/jupyter`.
 
 #### Reminders
 + shows the previous and upcoming downtime, RC workshops, reservations on Adroit and all university holidays.
