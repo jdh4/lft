@@ -17,9 +17,9 @@ def r_packages(netid, evars, term, gutter, width, verbose):
 
   frmt = "(%b %Y)"
 
-  parallel = ['furrr', 'Rmpi', 'doMPI', 'doMC', 'doParallel', 'future', 'caret', 'fastLink', 'snow']
+  parallel = ['furrr', 'Rmpi', 'doMPI', 'doMC', 'doParallel', 'future', 'fastLink', 'snow']
   trouble  = ['sf', 'rstan', 'gurobi']
-  green    = []
+  green    = ['caret']
 
   # check for R libraries in the default location
   path = f"/home/{netid}/R"

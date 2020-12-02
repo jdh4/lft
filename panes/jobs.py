@@ -56,7 +56,7 @@ def squeue(gutter, host, netid):
     if (running or pending):
       if pending:
         return (f"{gutter}Running: {running}   Pending: {pending} (Priority:{priority},"
-                f" Dependency:{dependency}, QOSMax+:{qosmax}, ReqNodeNotAvail: {reqnode})")
+                f" Dependency:{dependency}, QOSMax+:{qosmax}, ReqNodeNotAvail:{reqnode})")
       else:
         return (f"{gutter}Running: {running}   Pending: {pending}")
     else:

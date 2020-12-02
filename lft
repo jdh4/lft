@@ -260,7 +260,7 @@ ondemand = isdir(opath)
 versions = [f"Stata {i}" for i in range(12, 18) if isdir(f"{home}/.stata{i}")]
 if home_exists and home_rx and (versions or ondemand):
   divider(term.bold("Stata"), "", gutter, width)
-  if versions: print(gutter + " ".join(sorted(versions)))
+  if versions: print(gutter + ", ".join(sorted(versions)))
   if ondemand: utils.ondemand_last_used("Stata", opath, gutter)
 
 ###########################
