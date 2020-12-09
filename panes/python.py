@@ -50,10 +50,17 @@ def condarc_path(netid):
         return lines[i + 1].replace("-", "").strip()
   return None
 
+def get_libs(path):
+  libs = os.listdir(path)
+  for lib in libs:
+    if "libmpich.so" in lib:
+      return ["libmpich.so"]
+  return []
+
 def python_packages(netid, evars, term, gutter, width, verbose):
   versions = ['2.6', '2.7', '3.6', '3.7', '3.8', '3.9']
   frmt = "(%b %Y)"
-  parallel = ['mpi4py', 'mpich', 'intel_openmp', 'dask', 'joblib', 'tbb']
+  parallel = ['mpi4py', 'libmpich.so', 'intel_openmp', 'dask', 'joblib', 'tbb']
   gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba', 'jax']
   green    = ['fenics', 'geopandas', 'tensorflow', 'tensorflow_gpu', 'ipython', \
               'torch', 'pystan', 'jupyter', 'jupyterlab', 'deepmd-kit', 'yt', \
@@ -97,7 +104,8 @@ def python_packages(netid, evars, term, gutter, width, verbose):
                           f"{version}/site-packages {mtime}")
                     pkgs = os.listdir(path_site)
                     pkgs = [pkg for pkg in pkgs if isdir(os.path.join(path_site, pkg))]
-                    pkgs = clean_python_packages(pkgs)
+                    libs = get_libs(f"{pe}/{env}/lib")
+                    pkgs = clean_python_packages(pkgs + libs)
                     utils.print_packages(term, gutter, width, pkgs, red, green, max_chars=13)
                     print_single = True
                   else:
