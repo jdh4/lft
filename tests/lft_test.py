@@ -1,12 +1,12 @@
 import sys
 sys.path.append("../")
-sys.path.append("/scratch/gpfs/jdh4/terminal-env/lib/python3.8/site-packages")
+sys.path.append("/home/jdh4/bin/terminal-env/lib/python3.9/site-packages")
 from panes import utils
 from panes import sponsor as sp
 from panes import startup_scripts as ss
 from panes import jobs
 from panes import reminders as rm
-from datetime import date
+from datetime import datetime, date
 
 def test_name():
   name = "Alan M. Turing"
@@ -40,3 +40,11 @@ def test_timeformat():
 
 def test_2nd_tues():
   assert rm.second_tues_of_month(2021, 11) == date(2021, 11, 9)
+
+def test_extract_last():
+  x = ["jdh4   pts/11  Sat Dec 12 12:57:18 2020   still logged in", "", "", ""]
+  y = ["jdh4   pts/3   Sat Dec 12 10:56:59 2020 - Sat Dec 12 13:08:53 2020  (02:11)", "", "", ""]
+  z = ["jdh4   pts/3   Sat Dec  9 10:56:59 2020 - Sat Dec  9 01:08:53 2020  (02:11)", "", "", ""]
+  assert utils.extract_datetime(x) == "logged in" and \
+         utils.extract_datetime(y) == datetime(2020, 12, 12, 13, 8, 53) and \
+         utils.extract_datetime(z) == datetime(2020, 12, 9, 1, 8, 53)

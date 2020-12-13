@@ -45,10 +45,11 @@ def extract_datetime(lines):
   if len(lines) != 4:
     return None
   else:
-    items = lines[0].split()[3:7]
-    if "still logged in" not in lines[0]:
+    if "still logged in" in lines[0]:
+      return "logged in"
+    else:
       items = lines[0].split()[9:13]
-  return datetime.strptime("-".join(items), '%b-%d-%H:%M:%S-%Y')
+      return datetime.strptime("-".join(items), '%b-%d-%H:%M:%S-%Y')
  
 def last_command(netid):
   cmd = f"last -F -R -n 1 {netid}"
@@ -66,6 +67,7 @@ def last_active(netid):
   mtime = datetime.fromtimestamp(os.stat(f"/home/{netid}").st_mtime)
   ltime = last_command(netid)
   if ltime:
+    if ltime == "logged in": return f"  Active: {ltime}"
     if ltime > mtime: mtime = ltime
   dt = datetime.today() - mtime
   if dt.days == 0:
