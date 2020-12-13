@@ -1,4 +1,5 @@
 import os
+import subprocess
 from os import access, R_OK
 from math import ceil
 from datetime import datetime
@@ -23,8 +24,49 @@ def public_or_private(path):
   else:
     return f"{path}: private"
 
-def last_active(home):
-  mtime = datetime.fromtimestamp(os.stat(home).st_mtime)
+#################
+## last active ##
+#################
+#$ last -F -R -n 1 jl40
+#
+#wtmp begins Tue Dec  1 03:51:13 2020
+
+#$ last -F -R -n 1 hzerze
+#hzerze   pts/3        Sat Dec 12 10:56:59 2020 - Sat Dec 12 13:08:53 2020  (02:11)    
+#
+#wtmp begins Tue Dec  1 03:40:19 2020
+
+#$ last -F -R -n 1 jdh4
+#jdh4     pts/11       Sat Dec 12 12:57:18 2020   still logged in                      
+#
+#wtmp begins Tue Dec  1 03:40:19 2020
+
+def extract_datetime(lines):
+  if len(lines) != 4:
+    return None
+  else:
+    items = lines[0].split()[3:7]
+    if "still logged in" not in lines[0]:
+      items = lines[0].split()[9:13]
+  return datetime.strptime("-".join(items), '%b-%d-%H:%M:%S-%Y')
+ 
+def last_command(netid):
+  cmd = f"last -F -R -n 1 {netid}"
+  try:
+    output = subprocess.run(cmd, capture_output=True, shell=True, timeout=5)
+  except:
+    return None
+  else:
+    lines = output.stdout.decode("utf-8").split('\n')
+    return extract_datetime(lines)
+
+def last_active(netid):
+  """The last time active is taken as the more recent of the modification time
+     of /home and the top entry from the last command."""
+  mtime = datetime.fromtimestamp(os.stat(f"/home/{netid}").st_mtime)
+  ltime = last_command(netid)
+  if ltime:
+    if ltime > mtime: mtime = ltime
   dt = datetime.today() - mtime
   if dt.days == 0:
     hours = dt.seconds // 3600
@@ -36,7 +78,10 @@ def last_active(home):
     else:
       return f"  Active: {dt.seconds} seconds ago"
   elif dt.days == 1:
-    return "  Active: yesterday"
+    if dt.seconds // 3600 < datetime.today().hour:
+      return "  Active: yesterday"
+    else:
+      return f"  Active: 2 days ago"
   else:
     if dt.days <= 365:
       return f"  Active: {dt.days} days ago ({mtime.strftime('%b %-d')})"

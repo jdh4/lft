@@ -113,9 +113,9 @@ print("  Groups:")  # completed below
 print("    Dept:", p[1]) if p[1] else print("    Dept: unknown")
 print("Position:", p[3]) if p[3] else print("Position: unknown")
 
-# modification time of /home
+# user last active
 if isdir(home):
-  print(utils.last_active(home))
+  print(utils.last_active(netid))
 else:
   print("  Active: N/A")
 if spon: print(" Sponsor:")  # completed below
