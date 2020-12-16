@@ -308,7 +308,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
       overall = []
       for line in lines:
         if "." not in line.split("|")[0]: overall.append(line)
-      cut = 24 if verbose else 12 
+      cut = 36 if verbose else 12 
       if len(overall) > cut: overall = overall[-cut:]
       for line in overall:
         items = line.split("|") + [""] * len(extra_columns)
