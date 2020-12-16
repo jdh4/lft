@@ -107,7 +107,7 @@ def format_elapsed_time(x):
 def format_start(x):
   # format of start is 2020-09-13T11:42:34
   if x == "Unknown":
-    return x
+    return "Unknown  "
   else:
     try:
       start = datetime.strptime(x, "%Y-%m-%dT%H:%M:%S").strftime("%-m/%-d-%H:%M")
