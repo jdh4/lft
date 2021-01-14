@@ -155,7 +155,7 @@ evars['rlibsuser'] = (False, None)
 
 divider(f"{term.bold}Environment{term.normal}", '', gutter, width)
 if not home_exists:
-  print(f"{gutter}{home} does not exist")
+  print(f"{gutter}{home} does not exist on {host}")
 elif home_exists and not home_rx:
   print(f"{gutter}{home} is private")
 else:

@@ -130,9 +130,14 @@ def format_state(x, state):
   return state[x] if x in state else "--"
 
 def format_reqgres(x):
-  return x.replace("PER_NODE:", "").replace("PER_TASK:", "") \
-          .replace("gpu:tesla_v100", "v100") \
-          .replace("gpu:tesla_k40c", "k40c").strip()
+  # billing=28,cpu=24,gres/gpu=4,mem=96000M,node=1
+  if not "gres/gpu=" in x:
+    return ""
+  else:
+    parts = x.split(",")
+    for part in parts:
+      if "gres/gpu=" in part:
+        return part.split("=")[-1] + " "
 
 def format_qos(x, host):
   if host == "della" or host == "adroit":
@@ -220,7 +225,7 @@ def align_columns(rows, cols, max_width, term, gutter, host):
     cols.remove(d)
   trans = {'jobid':'JobID', 'jobname':'Name', 'state':'ST', 'start':'Start', \
            'elapsed':'Elap', 'partition':'Prt', 'ncpus':'c', 'nnodes':'N', \
-           'reqmem':'Mem', 'timelimit':'Lim', 'reqgres':'gres', 'qos':'QoS'}
+           'reqmem':'Mem', 'timelimit':'Lim', 'alloctres':'GPU', 'qos':'QoS'}
   abbr = [trans[col] if col in trans else col for col in cols]
 
   # manually adjust width
@@ -229,7 +234,7 @@ def align_columns(rows, cols, max_width, term, gutter, host):
   max_width['elapsed'] = max(4, max_width['state'])
   max_width['timelimit'] = max(3, max_width['timelimit'])
   if (host == "tiger" or host == "adroit" or host == "traverse"):
-    max_width['reqgres'] = max(4, max_width['reqgres'])
+    max_width['alloctres'] = max(3, max_width['alloctres'])
   max_width['qos'] = max(3, max_width['qos'])
 
   line = gutter
@@ -284,7 +289,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
   # sacct -u hzerze -S 09/24 -n -P -o jobid%20,jobname%40
   if (host == "tiger" or host == "adroit" or host == "traverse"):
-    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,reqgres,qos,maxrss,jobname%40"
+    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,alloctres,qos,maxrss,jobname%40"
   else:
     frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,qos,maxrss,jobname%40"
   #cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -P | egrep -v '[0-9].extern|[0-9].batch|[0-9]\.[0-9]\|'"
@@ -319,7 +324,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
         j = j._replace(state = format_state(j.state, state))
         j = j._replace(elapsed = format_elapsed_time(j.elapsed))
         if (host == "tiger" or host == "adroit" or host == "traverse"):
-          j = j._replace(reqgres = format_reqgres(j.reqgres))
+          j = j._replace(alloctres = format_reqgres(j.alloctres))
         j = j._replace(partition = format_prt(j.partition))
         j = j._replace(qos = format_qos(j.qos, host))
         j = j._replace(reqmem = format_memory(j.reqmem))
