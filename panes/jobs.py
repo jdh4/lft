@@ -161,6 +161,8 @@ def format_jobname(x):
     x = "O-RSTUDIO"
   elif x == "sys/dashboard/sys/xstata":
     x = "O-STATA"
+  elif x == "sys/dashboard/sys/mathematica":
+    x = "O-MATHEMA"
   return x if len(x) <= 9 else x[:8] + "+"
 
 def cmt_efficiency(elapraw, limitraw, reqmem, nnodes, ncpus, maxrss):
@@ -181,7 +183,7 @@ def cmt_efficiency(elapraw, limitraw, reqmem, nnodes, ncpus, maxrss):
   elif "N" in reqmem:
     mem = reqmem.replace("T/N", "000000000").replace("G/N", "000000") \
                 .replace("M/N", "000").replace("K/N", "")
-    alloc = int(nnodes) * int(mem)
+    alloc = int(nnodes) * int(float(mem))  # to deal with 187.50G/N
     ratio = float(maxrss) / alloc
     if ratio > 1: ratio = 1
     M = str(round(9 * ratio))
@@ -289,9 +291,9 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
   # sacct -u hzerze -S 09/24 -n -P -o jobid%20,jobname%40
   if (host == "tiger" or host == "adroit" or host == "traverse"):
-    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,alloctres,qos,maxrss,jobname%40"
+    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem%10,partition,alloctres,qos,maxrss,jobname%40"
   else:
-    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem,partition,qos,maxrss,jobname%40"
+    frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem%10,partition,qos,maxrss,jobname%40"
   #cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -P | egrep -v '[0-9].extern|[0-9].batch|[0-9]\.[0-9]\|'"
   cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -P"
   output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
