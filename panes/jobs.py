@@ -13,22 +13,25 @@ def sshare(term, gutter, host, netid):
   output = subprocess.run(cmd, capture_output=True, shell=True, timeout=3)
   lines = output.stdout.decode("utf-8").split('\n')
   usage = []
-  for i, line in enumerate(lines):
-    if ' ' + netid + ' ' in line and i != 0:
-      fairshare = f"{float(line.split()[7]):.2f}"
-      clr1 = f"{term.bold}{term.red}" if float(fairshare) < 0.15 else ""
-      group = lines[i - 1].split()[0].upper()
-      normShares = float(lines[i - 1].split()[2])
-      normUsage  = float(lines[i - 1].split()[4])
-      if normShares == 0:
-        ratio = "N/A"
-      else:
-        ratio = int(round(100 * normUsage / normShares, -1))
-        ratio = f"{ratio}%"
-      clr2 = f"{term.bold}{term.red}" if ratio != "N/A" and int(ratio.replace("%", "")) > 200 else ""
-      gshare = f"{round(100 * normShares)}%"
-      usage.append(f"{gutter}Fairshare: {clr1}{fairshare}{term.normal}   30-day {group} usage: {clr2}{ratio}{term.normal}"
-                   f"   {group} share of cluster: {gshare}")
+  try:
+    for i, line in enumerate(lines):
+      if ' ' + netid + ' ' in line and i != 0:
+        fairshare = f"{float(line.split()[7]):.2f}"
+        clr1 = f"{term.bold}{term.red}" if float(fairshare) < 0.15 else ""
+        group = lines[i - 1].split()[0].upper()
+        normShares = float(lines[i - 1].split()[2])
+        normUsage  = float(lines[i - 1].split()[4])
+        if normShares == 0:
+          ratio = "N/A"
+        else:
+          ratio = int(round(100 * normUsage / normShares, -1))
+          ratio = f"{ratio}%"
+        clr2 = f"{term.bold}{term.red}" if ratio != "N/A" and int(ratio.replace("%", "")) > 200 else ""
+        gshare = f"{round(100 * normShares)}%"
+        usage.append(f"{gutter}Fairshare: {clr1}{fairshare}{term.normal}   30-day {group} usage: {clr2}{ratio}{term.normal}"
+                     f"   {group} share of cluster: {gshare}")
+  except:
+    pass
   return usage
 
 ############
