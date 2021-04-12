@@ -6,7 +6,8 @@
 import pandas as pd
 
 clusters = ['adroit_ls.txt', 'della_ls.txt', 'perseus_ls.txt', \
-            'tiger_ls.txt', 'tigressdata_ls.txt', 'traverse_ls.txt']
+            'tiger_ls.txt', 'tigressdata_ls.txt', 'traverse_ls.txt', \
+            'stellar-intel_ls.txt']
 
 df = pd.read_csv(clusters[0], header=None)
 df.columns = ['netid']

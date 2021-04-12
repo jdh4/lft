@@ -158,6 +158,7 @@ known_hosts = {
 'perseus':'perseus',
 'traverse.princeton.edu':'traverse',
 'adroit4':'adroit',
+'stellar-intel.princeton.edu':'stellar',
 'tigressdata2.princeton.edu':'tigressdata'}
 
 #####################
