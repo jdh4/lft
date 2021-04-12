@@ -19,5 +19,6 @@ for cluster in clusters[1:]:
   tmp[host] = host
   df = pd.merge(df, tmp, on='netid', how='outer')
 
+df["stellar-intel"] = df["stellar-intel"].apply(lambda x: x if pd.isna(x) else x.replace("stellar-intel", "stellar"))
 df = df.sort_values(by='netid', ascending=True)
 df.to_csv('combined_ls.csv', index=False)
