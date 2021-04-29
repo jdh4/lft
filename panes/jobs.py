@@ -298,8 +298,12 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   else:
     frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem%10,partition,qos,maxrss,jobname%40"
   cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -P"
-  output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
-  lines = output.stdout.split('\n')
+  try:
+    output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
+  except:
+    lines = []
+  else:
+    lines = output.stdout.split('\n')
  
   # avoid dependency on pandas (and its slow startup) by using namedtuple
   from collections import namedtuple
