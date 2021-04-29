@@ -316,8 +316,9 @@ def sacct(term, gutter, verbose, host, netid, days=3):
       max_width = dict(zip(columns, [0] * len(columns)))
       overall = []
       for line in lines:
+        # would be nice to look for OUT_OF_MEMORY in intermediate job steps
         if "." not in line.split("|")[0]: overall.append(line)
-      cut = 36 if verbose else 12 
+      cut = 50 if verbose else 20
       if len(overall) > cut: overall = overall[-cut:]
       for line in overall:
         items = line.split("|") + [""] * len(extra_columns)

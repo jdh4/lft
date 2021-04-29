@@ -194,9 +194,9 @@ else:
 with term.location():
   print(term.move_xy(2, 6) + "Groups: " + grps)
 
-#################
-## login shell ##
-#################
+###############################
+## login shell and .modulerc ##
+###############################
 if home_exists:
   cmd = f"getent passwd {netid}"
   try:
@@ -212,6 +212,8 @@ if home_exists:
         print(f"{gutter}    login shell: {term.bold}{term.red}{shell}{term.normal}")
       if home_rx and os.path.isfile(f"/home/{netid}/.cshrc"):
         print(f"{gutter}{term.bold}{term.red}~/.cshrc exists{term.normal}")
+  if home_rx and os.path.isfile(f"/home/{netid}/.modulerc"):
+    print(f"{gutter}{term.bold}{term.red}~/.modulerc exists{term.normal}")
 
 ####################
 ## sponsor_report ##

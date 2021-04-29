@@ -47,6 +47,7 @@ Options:
 
 #### .bashrc and .bash_profile
 + scans `.bashrc` and `.bash_profile` looking for the loading of environment modules and the setting of important environment variables (`PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`) while reporting the state of each startup script as either `skeleton` or `custom`.
++ looks for `~/.modulerc`
 
 #### Python
 + lists Conda environments in `~/.conda/envs` as well as the packages (if `-v` option) with color coding.
@@ -58,7 +59,7 @@ Options:
 
 #### R
 + lists existence of R libraries and packages found in `~/R/x86_64-redhat-linux-gnu-library/X.Y` as well as Conda environments in `~/.conda/envs` (packages are printed with color coding to highlight parallel packages).
-+ reports the existence of `~/.R/Makevars` and `LOCK` files.
++ reports the existence of `~/.R/Makevars` and `LOCK` files as well as `~/.Renviron` and `~/.Rprofile`.
 + shows when OnDemand RStudio was last used.
 
 #### MATLAB

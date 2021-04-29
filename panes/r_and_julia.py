@@ -84,10 +84,17 @@ def r_packages(netid, evars, term, gutter, width, verbose):
   rlibs = evars["rlibs"]
   rlibsuser = evars["rlibsuser"]
   path = f"/home/{netid}/.R/Makevars"
-  if printed_r_divider and (os.path.isfile(path) or rlibs[0] or rlibsuser[0] or ondemand):
+  path_environ = f"/home/{netid}/.Renviron"
+  path_profile = f"/home/{netid}/.Rprofile"
+  if printed_r_divider and (os.path.isfile(path) or os.path.isfile(path_environ) or \
+     os.path.isfile(path_profile) or rlibs[0] or rlibsuser[0] or ondemand):
     print("-" * width)
     if os.path.isfile(path):
       print(f"{gutter}{term.bold}{term.red}{path}{term.normal}")
+    if os.path.isfile(path_environ):
+      print(f"{gutter}{term.bold}{term.red}{path_environ}{term.normal}")
+    if os.path.isfile(path_profile):
+      print(f"{gutter}{term.bold}{term.red}{path_profile}{term.normal}")
     if rlibs[0]: print(f"{gutter}R_LIBS set in ~/{rlibs[1]}")
     if rlibsuser[0]: print(f"{gutter}R_LIBS_USER set in ~/{rlibsuser[1]}")
     if ondemand: utils.ondemand_last_used("RStudio", opath, gutter)
