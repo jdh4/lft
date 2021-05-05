@@ -64,6 +64,11 @@ def last_command(netid):
 def last_active(netid):
   """The last time active is taken as the more recent of the modification time
      of /home and the top entry from the last command."""
+  # from finger
+  # Last login Sat Mar  9 11:26 2019 (EST) on pts/19 from vpn10-client-128-112-69-104.princeton.edu
+  # Last login Thu Apr 29 15:40 (EDT) on pts/48 from mydella
+  # On since Sun May  2 12:52 (EDT) on pts/60 from mydella
+  # Never logged in.
   mtime = datetime.fromtimestamp(os.stat(f"/home/{netid}").st_mtime)
   ltime = last_command(netid)
   if ltime:
@@ -155,10 +160,14 @@ known_hosts = {
 'tigercpu.princeton.edu':'tiger',
 'tigergpu.princeton.edu':'tiger',
 'della5.princeton.edu':'della',
+'della-gpu.princeton.edu':'della',
 'perseus':'perseus',
 'traverse.princeton.edu':'traverse',
 'adroit4':'adroit',
 'stellar-intel.princeton.edu':'stellar',
+'stellar-amd.princeton.edu':'stellar',
+'stellar-vis1.princeton.edu':'stellar',
+'stellar-vis2.princeton.edu':'stellar',
 'tigressdata2.princeton.edu':'tigressdata'}
 
 #####################
