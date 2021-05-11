@@ -291,6 +291,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   }
   state = dict(zip(state.values(), state.keys()))
   # sacct format is YYYY-MM-DD[THH:MM[:SS]]
+  days = 7 if verbose else days
   start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
   # sacct -u hzerze -S 09/24 -n -P -o jobid%20,jobname%40
   if (host == "tiger" or host == "adroit" or host == "traverse"):
