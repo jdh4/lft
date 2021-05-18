@@ -135,7 +135,7 @@ if os.path.isfile(flnm):
         home_dirs = [hdir for hdir in list(row.values())[1:] if hdir != '']
         break
 if home_dirs:
-  frmt = " @ %-I:%M %p"
+  frmt = " @ %-I:%M%p"
   mtime = datetime.fromtimestamp(os.stat(flnm).st_mtime).strftime(frmt)
   with term.location(65, 4):
     print("/home" + mtime)

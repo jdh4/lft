@@ -60,11 +60,11 @@ def get_libs(path):
 def python_packages(netid, evars, term, gutter, width, verbose):
   versions = ['2.6', '2.7', '3.6', '3.7', '3.8', '3.9']
   frmt = "(%b %Y)"
-  parallel = ['mpi4py', 'libmpich.so', 'intel_openmp', 'dask', 'joblib', 'tbb']
+  parallel = ['libmpich.so']
   gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba', 'jax']
   green    = ['fenics', 'geopandas', 'tensorflow', 'tensorflow_gpu', 'ipython', \
               'torch', 'pystan', 'jupyter', 'jupyterlab', 'deepmd-kit', 'yt', \
-              'cobaya']
+              'cobaya', 'mpi4py', 'intel_openmp', 'dask', 'joblib', 'tbb']
   red      = parallel + gpu
 
   printed_divider = False

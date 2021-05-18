@@ -26,6 +26,7 @@ def sshare(term, gutter, host, netid):
         else:
           ratio = int(round(100 * normUsage / normShares, -1))
           ratio = f"{ratio}%"
+        if "della" in host and group == "PHYSICS": ratio = "100%"
         clr2 = f"{term.bold}{term.red}" if ratio != "N/A" and int(ratio.replace("%", "")) > 200 else ""
         gshare = f"{round(100 * normShares)}%"
         usage.append(f"{gutter}Fairshare: {clr1}{fairshare}{term.normal}   30-day {group} usage: {clr2}{ratio}{term.normal}"
