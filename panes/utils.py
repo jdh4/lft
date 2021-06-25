@@ -47,7 +47,12 @@ def extract_datetime(lines):
   else:
     if "still logged in" in lines[0]:
       return "logged in"
+    elif "no logout" in lines[0]:
+      #syue     pts/29       Fri Jun 18 11:34:19 2021   gone - no logout
+      items = lines[0].split()[3:7]
+      return datetime.strptime("-".join(items), '%b-%d-%H:%M:%S-%Y')
     else:
+      #syue     pts/31       Fri Jun 18 13:31:38 2021 - Fri Jun 18 19:37:05 2021  (06:05)    
       items = lines[0].split()[9:13]
       return datetime.strptime("-".join(items), '%b-%d-%H:%M:%S-%Y')
  
