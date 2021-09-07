@@ -167,6 +167,8 @@ def format_jobname(x):
     x = "O-STATA"
   elif x == "sys/dashboard/sys/mathematica":
     x = "O-MATHEMA"
+  elif x == "sys/dashboard/sys/desktop":
+    x = "O-DESKTOP"
   return x if len(x) <= 9 else x[:8] + "+"
 
 def cmt_efficiency(elapraw, limitraw, reqmem, nnodes, ncpus, maxrss):
