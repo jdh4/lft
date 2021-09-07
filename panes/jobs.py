@@ -146,8 +146,8 @@ def format_reqgres(x):
 def format_qos(x, host):
   if host == "della" or host == "adroit":
     return x
-  elif host == "perseus":
-    return x.replace("pers-", "")
+  elif host == "stellar":
+    return x.replace("-stellar", "")
   else:
     return x.replace("tiger", "tgr").replace("short", "sh").replace("medium", "med") \
             .replace("long", "lg").replace("test", "ts")

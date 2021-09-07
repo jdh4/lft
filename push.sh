@@ -9,7 +9,7 @@ cp -r panes  $HOME/bin
 cp -r remind $HOME/bin
 
 # other clusters
-for cluster in adroit della perseus tigressdata traverse stellar-intel
+for cluster in adroit della tigressdata traverse stellar-intel
 do
   echo ${cluster}
   scp    lft    jdh4@${cluster}.princeton.edu:/home/jdh4/bin

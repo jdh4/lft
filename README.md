@@ -4,7 +4,7 @@ For a given NetID, `lft` will crawl the `/home` directory of the user and run mu
 
 ## How to use it?
 
-Add this line to your `~/.bashrc` file on each cluster (Adroit, Della, Perseus, Tiger, Tigressdata and Traverse):
+Add this line to your `~/.bashrc` file on each cluster (Adroit, Della, Stellar, Tiger, Tigressdata and Traverse):
 
 ```bash
 alias lft='/home/jdh4/bin/lft'
