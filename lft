@@ -254,7 +254,11 @@ if home_exists and home_rx and ((isdir(path) and utils.is_rx(path)) or ondemand)
   if isdir(path) and utils.is_rx(path):
     versions = sorted(os.listdir(path))
     if versions: print(gutter + " ".join([v for v in versions if "R20" in v]))
-  if ondemand: utils.ondemand_last_used("MATLAB", opath, gutter)
+  if ondemand:
+    utils.ondemand_last_used("MATLAB", opath, gutter)
+    lpath = f"/home/{netid}/.local/share/matlab"
+      if isdir(lpath):
+        print(f"{gutter}{lpath} exists")
 
 ###########
 ## stata ##
@@ -265,7 +269,11 @@ versions = [f"Stata {i}" for i in range(12, 18) if isdir(f"{home}/.stata{i}")]
 if home_exists and home_rx and (versions or ondemand):
   divider(term.bold("Stata"), "", gutter, width)
   if versions: print(gutter + ", ".join(sorted(versions)))
-  if ondemand: utils.ondemand_last_used("Stata", opath, gutter)
+  if ondemand:
+    utils.ondemand_last_used("Stata", opath, gutter)
+    lpath = f"/home/{netid}/.local/share/stata"
+      if isdir(lpath):
+        print(f"{gutter}{lpath} exists")
 
 ###########################
 ## current and past jobs ##

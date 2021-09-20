@@ -97,7 +97,11 @@ def r_packages(netid, evars, term, gutter, width, verbose):
       print(f"{gutter}{term.bold}{term.red}{path_profile}{term.normal}")
     if rlibs[0]: print(f"{gutter}R_LIBS set in ~/{rlibs[1]}")
     if rlibsuser[0]: print(f"{gutter}R_LIBS_USER set in ~/{rlibsuser[1]}")
-    if ondemand: utils.ondemand_last_used("RStudio", opath, gutter)
+    if ondemand:
+      utils.ondemand_last_used("RStudio", opath, gutter)
+      lpath = f"/home/{netid}/.local/share/rstudio"
+      if isdir(lpath):
+        print(f"{gutter}{lpath} exists")
   return None
 
 ###########

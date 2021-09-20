@@ -157,6 +157,7 @@ def ondemand_last_used(app, opath, gutter):
     frmt = "%b %-d %Y"
     mtime = mtime.strftime(frmt)
     print(f"{gutter}OnDemand {app}: {mtime}")
+  print(f"{gutter}{opath} exists")
 
 ##########################
 ## hostname translation ##

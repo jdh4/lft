@@ -182,4 +182,8 @@ def python_packages(netid, evars, term, gutter, width, verbose):
     if anaconda: print(f"{gutter}Anaconda: yes")
     if miniconda: print(f"{gutter}Miniconda: yes")
     #if dot_cache and printed_divider: print(f"{gutter}~/.cache")
-    if ondemand: utils.ondemand_last_used("Jupyter", opath, gutter)
+    if ondemand:
+      utils.ondemand_last_used("Jupyter", opath, gutter)
+      lpath = f"/home/{netid}/.local/share/jupyter"
+      if isdir(lpath):
+        print(f"{gutter}{lpath} exists")
