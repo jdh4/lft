@@ -257,8 +257,8 @@ if home_exists and home_rx and ((isdir(path) and utils.is_rx(path)) or ondemand)
   if ondemand:
     utils.ondemand_last_used("MATLAB", opath, gutter)
     lpath = f"/home/{netid}/.local/share/matlab"
-      if isdir(lpath):
-        print(f"{gutter}{lpath} exists")
+    if isdir(lpath):
+      print(f"{gutter}{lpath} exists")
 
 ###########
 ## stata ##
@@ -272,8 +272,8 @@ if home_exists and home_rx and (versions or ondemand):
   if ondemand:
     utils.ondemand_last_used("Stata", opath, gutter)
     lpath = f"/home/{netid}/.local/share/stata"
-      if isdir(lpath):
-        print(f"{gutter}{lpath} exists")
+    if isdir(lpath):
+      print(f"{gutter}{lpath} exists")
 
 ###########################
 ## current and past jobs ##
