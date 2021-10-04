@@ -241,7 +241,7 @@ def align_columns(rows, cols, max_width, term, gutter, host):
   max_width['state'] = max(2, max_width['state'])
   max_width['elapsed'] = max(4, max_width['state'])
   max_width['timelimit'] = max(3, max_width['timelimit'])
-  if (host == "tiger" or host == "adroit" or host == "traverse"):
+  if (host == "tiger" or host == "adroit" or host == "traverse" or host == "della"):
     max_width['alloctres'] = max(3, max_width['alloctres'])
   max_width['qos'] = max(3, max_width['qos'])
 
@@ -297,7 +297,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   days = 7 if verbose else days
   start = datetime.fromtimestamp(time() - days * 24 * 60 * 60).strftime('%Y-%m-%d-%H:%M')
   # sacct -u hzerze -S 09/24 -n -P -o jobid%20,jobname%40
-  if (host == "tiger" or host == "adroit" or host == "traverse"):
+  if (host == "tiger" or host == "adroit" or host == "traverse" or host == "della"):
     frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem%10,partition,alloctres,qos,maxrss,jobname%40"
   else:
     frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem%10,partition,qos,maxrss,jobname%40"
@@ -336,7 +336,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
         j = j._replace(start = format_start(j.start))
         j = j._replace(state = format_state(j.state, state))
         j = j._replace(elapsed = format_elapsed_time(j.elapsed))
-        if (host == "tiger" or host == "adroit" or host == "traverse"):
+        if (host == "tiger" or host == "adroit" or host == "traverse" or host == "della"):
           j = j._replace(alloctres = format_reqgres(j.alloctres))
         j = j._replace(partition = format_prt(j.partition))
         j = j._replace(qos = format_qos(j.qos, host))
