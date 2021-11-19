@@ -18,7 +18,7 @@ def second_tues_of_month(year, month):
   second_tues = all_tues_of_month[1]
   return second_tues
 
-def previous_and_next_downtime_dates(term, gutter):
+def previous_and_next_downtime_dates(term, gutter, verbose):
   """Display days from/to the previous/next downtime when close."""
   today = datetime.today().date()
   year = today.year
@@ -64,7 +64,7 @@ def previous_and_next_downtime_dates(term, gutter):
   else:
     nxt = f"({clr}{dt_upcoming.days} days ahead{term.normal}) {upcoming_tues}"
 
-  if (dt_previous.days <= 5 or dt_upcoming.days <= 9):
+  if (dt_previous.days <= 5 or dt_upcoming.days <= 9 or verbose):
     return f"{gutter}{prv} --- Downtime --> {nxt}"
   else:
     return None
