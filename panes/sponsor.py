@@ -33,6 +33,7 @@ def get_sponsor(netid):
     sponsor = None
   else:
     lines = output.stdout.decode("utf-8").split('\n')
+    if output.returncode == 1: return ("<NON-ASCII>", "<NON-ASCII>")
     if len(lines) > 1 and 'No sponsored users' in lines[0]:
       sponsor = lines[1].split()[-1]
     elif "Manager" in lines[0] and "has sponsored" in lines[0]:
@@ -49,6 +50,7 @@ def get_sponsor(netid):
       pass
     else:
       lines = output.stdout.decode("utf-8").split('\n')
+      if output.returncode == 1: return ("<NON-ASCII>", "<NON-ASCII>")
       for line in lines:
         if "Manager" in line and "has sponsored" in line:
           # Manager pdebene (Pablo G. Debenedetti) has sponsored the following users
