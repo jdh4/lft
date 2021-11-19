@@ -298,7 +298,7 @@ if home_exists and host != "tigressdata":
 ###############
 from panes import reminders as rms
 
-downtime = rms.previous_and_next_downtime_dates(term, gutter)
+downtime = rms.previous_and_next_downtime_dates(term, gutter, verbose)
 reservations = rms.get_reservations(term, gutter, days_away=10) if host == "adroit" else []
 reminders = rms.get_reminders(term, gutter, "holidays.csv", host, days_away=10)
 reminders.extend(rms.get_reminders(term, gutter, "rc_workshops.csv", host, days_away=3))
