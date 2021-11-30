@@ -24,7 +24,7 @@ def r_packages(netid, evars, term, gutter, width, verbose):
   # check for R libraries in the default location
   path = f"/home/{netid}/R"
   if isdir(path):
-    for version in ['3.3', '3.4', '3.5', '3.6', '4.0']:
+    for version in ['3.3', '3.4', '3.5', '3.6', '4.0', '4.1', '4.2', '4.3', '4.4', '4.5', '4.6']:
       path = f"/home/{netid}/R/x86_64-redhat-linux-gnu-library/{version}"
       if isdir(path):
         if utils.is_rx(path):
