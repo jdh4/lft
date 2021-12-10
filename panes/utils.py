@@ -166,7 +166,7 @@ known_hosts = {
 'tigercpu.princeton.edu':'tiger',
 'tigergpu.princeton.edu':'tiger',
 'della5.princeton.edu':'della',
-'della6.princeton.edu':'della',
+'della8.princeton.edu':'della',
 'della-gpu.princeton.edu':'della',
 'traverse.princeton.edu':'traverse',
 'adroit4':'adroit',
