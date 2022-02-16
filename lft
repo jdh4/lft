@@ -161,7 +161,7 @@ if not home_exists:
 elif home_exists and not home_rx:
   print(f"{gutter}{home} is private")
 else:
-  rc = ss.analyze_startup_script('.bashrc', utils.bashrc_default, utils.bashrc_default8  evars, netid)
+  rc = ss.analyze_startup_script('.bashrc', utils.bashrc_default, utils.bashrc_default8, evars, netid)
   bp = ss.analyze_startup_script('.bash_profile', utils.bash_profile_default, utils.bash_profile_default8, evars, netid)
   if not rc[2] and not bp[2]:
     print(f"{gutter}      ~/.bashrc: {rc[3]}")
