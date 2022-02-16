@@ -24,7 +24,7 @@ def remove_comments_and_white_space(lines):
   trans = str.maketrans('', '', ' \n\t\r')
   return ''.join(remove_comments).translate(trans)
 
-def analyze_startup_script(flnm, default, evars, netid):
+def analyze_startup_script(flnm, default, default8, evars, netid):
   aliases = 0
   exports = 0
   modules = []
@@ -32,9 +32,10 @@ def analyze_startup_script(flnm, default, evars, netid):
   if os.path.isfile(path) and utils.is_r(path):
     with open(path) as f:
       lines = f.readlines()
-    startup_rm = remove_comments_and_white_space(lines)
-    default_rm = remove_comments_and_white_space(default)
-    if (startup_rm == default_rm):
+    startup_rm  = remove_comments_and_white_space(lines)
+    default_rm  = remove_comments_and_white_space(default)
+    default_rm8 = remove_comments_and_white_space(default8)
+    if (startup_rm == default_rm or startup_rm == default_rm8):
       state = "skeleton"
     else:
       state = "custom"
