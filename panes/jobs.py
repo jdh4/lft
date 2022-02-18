@@ -315,7 +315,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   columns = [col.split('%')[0] for col in frmt.split(",")] + extra_columns
   Job = namedtuple("Job", columns)
   sct = []
-  if lines[-1] == '': lines = lines[:-1]
+  if lines != [] and lines[-1] == '': lines = lines[:-1]
   if (lines == []):
     return [f"{gutter}No jobs in last {24 * days} hours"]
   else:
