@@ -82,4 +82,17 @@ Options:
 
 ## About sponsors
 
-The cluster-specific sponsor is returned. The code for this is [here](https://github.com/PrincetonUniversity/monthly_sponsor_reports/blob/main/sponsor.py) (however, the pandas lines are commented out).
+The cluster-specific sponsor is returned. The code for this is [here](https://github.com/PrincetonUniversity/monthly_sponsor_reports/blob/main/sponsor.py) (however, the pandas lines are commented out). To install lft you will need to do:
+
+```
+$ cd panes
+$ rm sponsor.py
+$ wget https://raw.githubusercontent.com/PrincetonUniversity/monthly_sponsor_reports/main/sponsor.py
+```
+
+And then comment-out the two lines involving pandas:
+
+```
+#import pandas as pd
+#rk = pd.read_csv(fname)
+```
