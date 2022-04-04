@@ -79,3 +79,7 @@ Options:
 
 #### Reminders
 + shows the previous and upcoming downtime, RC workshops, reservations on Adroit and all university holidays.
+
+## About sponsors
+
+The cluster-specific sponsor is returned. The code for this is [here](https://github.com/PrincetonUniversity/monthly_sponsor_reports/blob/main/sponsor.py) (however, the pandas lines are commented out).
