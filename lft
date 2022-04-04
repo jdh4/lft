@@ -220,9 +220,14 @@ if home_exists:
 ####################
 ## sponsor_report ##
 ####################
-if spon:
+if spon and host == "adroit":
+  with term.location():
+    print(term.move_xy(1, 10) + f"No sponsors on Adroit")
+elif spon:
   from panes import sponsor as sp
-  sponsor_full_name, sponsor = sp.get_sponsor(netid)
+  d = sp.sponsor_per_cluster(netid)
+  sponsor = d[host]
+  sponsor_full_name = sp.sponsor_full_name(sponsor, verbose=False)
   if sponsor_full_name and sponsor:
     with term.location():
       print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
