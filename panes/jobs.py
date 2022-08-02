@@ -54,7 +54,7 @@ def squeue(gutter, host, netid):
       if (' R ' in line): running += 1
       if (' PD ' in line): pending += 1
       if (' (Priority) ' in line): priority += 1
-      if (' (Dependency) ' in line): dependency += 1
+      if (' (Dependency)' in line): dependency += 1
       if ('(QOSMax' in line): qosmax += 1
       if ('ReqNodeNotAvail' in line): reqnode += 1
     if (running or pending):
