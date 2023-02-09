@@ -301,7 +301,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
     frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem%10,partition,alloctres,qos,maxrss,jobname%40"
   else:
     frmt = "jobid%20,state,start,elapsed,elapsedraw,timelimit,timelimitraw,cputimeraw,ncpus,nnodes,reqmem%10,partition,qos,maxrss,jobname%40"
-  cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -P"
+  cmd = f"sacct -S {start} -u {netid} -o {frmt} -n -P 2>/dev/null"
   try:
     output = subprocess.run(cmd, stdout=sPIPE, shell=True, timeout=3, text=True)
   except:
