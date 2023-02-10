@@ -58,7 +58,7 @@ def get_libs(path):
   return []
 
 def python_packages(netid, evars, term, gutter, width, verbose):
-  versions = ['2.6', '2.7', '3.6', '3.7', '3.8', '3.9']
+  versions = ['2.6', '2.7', '3.6', '3.7', '3.8', '3.9', '3.10', '3.11', '3.12']
   frmt = "(%b %Y)"
   parallel = ['libmpich.so']
   gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba', 'jax']
