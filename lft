@@ -67,7 +67,7 @@ if (hostname not in utils.known_hosts):
 host = utils.known_hosts[hostname]
 
 # ldapsearch (causes code to seemingly hang for 1-2 seconds at start)
-username = sys.argv[1].strip()
+username = sys.argv[1].split("@")[0].strip() if "@" in sys.argv[1] else sys.argv[1].strip()
 person = dossier.ldap_plus([username])
 netid = person[1][9]
 if netid is None:
