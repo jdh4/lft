@@ -233,7 +233,7 @@ elif spon:
   d = sp.get_sponsor_netid_per_cluster_dict_from_ldap(netid)
   sponsor = d[host]
   sponsor_full_name = sp.get_full_name_from_ldap(sponsor, use_rc=True, include_netid=False,
-                                                 verbose=False, strip_accents=False)
+                                                 verbose=False, strip=False)
   if sponsor_full_name and sponsor:
     with term.location():
       print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
