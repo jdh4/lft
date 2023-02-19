@@ -20,6 +20,7 @@ from blessed import Terminal
 # self-written code
 from panes import utils
 from panes.utils import divider
+# https://github.com/jdh4/tigergpu_visualization/blob/master/dossier.py
 from panes import dossier
 
 ######################################
@@ -227,10 +228,12 @@ if spon and host == "adroit":
   with term.location():
     print(term.move_xy(1, 10) + f"No sponsors on Adroit")
 elif spon:
+  # https://raw.githubusercontent.com/PrincetonUniversity/monthly_sponsor_reports/main/sponsor.py
   from panes import sponsor as sp
-  d = sp.sponsor_per_cluster(netid)
+  d = sp.get_sponsor_netid_per_cluster_dict_from_ldap(netid)
   sponsor = d[host]
-  sponsor_full_name = sp.sponsor_full_name(sponsor, verbose=False)
+  sponsor_full_name = sp.get_full_name_from_ldap(sponsor, use_rc=True, include_netid=False,
+                                                 verbose=False, strip_accents=False)
   if sponsor_full_name and sponsor:
     with term.location():
       print(term.move_xy(1, 10) + f"Sponsor: {sponsor_full_name} ({sponsor})")
