@@ -12,6 +12,7 @@ from subprocess import PIPE as sPIPE
 from datetime import datetime
 from time import time
 from socket import gethostname
+import base64
 
 # conda environment
 from blessed import Terminal
@@ -108,6 +109,8 @@ if p[9]:
    print("   NetID:", term.bold(p[9]))
  else:
    print(f"   NetID: {term.bold(p[9])} ({term.bold}{term.red}{username} is alias{term.normal})")
+if p[0].startswith(": "):
+  p[0] = base64.b64decode(p[0][2:].strip()).decode("utf-8")
 if p[0]: print("    Name:", p[0])
 print("  Groups:")  # completed below
 print("    Dept:", p[1]) if p[1] else print("    Dept: unknown")
