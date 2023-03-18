@@ -61,7 +61,7 @@ def python_packages(netid, evars, term, gutter, width, verbose):
   versions = ['2.6', '2.7', '3.6', '3.7', '3.8', '3.9', '3.10', '3.11', '3.12']
   frmt = "(%b %Y)"
   parallel = ['libmpich.so']
-  gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba', 'jax']
+  gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba', 'jax', 'nvidia']
   green    = ['fenics', 'geopandas', 'tensorflow', 'tensorflow_gpu', 'ipython', \
               'torch', 'pystan', 'jupyter', 'jupyterlab', 'deepmd-kit', 'yt', \
               'cobaya', 'mpi4py', 'intel_openmp', 'dask', 'joblib', 'tbb', 'ipykernel']
