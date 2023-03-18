@@ -64,7 +64,7 @@ def python_packages(netid, evars, term, gutter, width, verbose):
   gpu      = ['cudatoolkit', 'cudnn', 'cupy', 'numba', 'jax']
   green    = ['fenics', 'geopandas', 'tensorflow', 'tensorflow_gpu', 'ipython', \
               'torch', 'pystan', 'jupyter', 'jupyterlab', 'deepmd-kit', 'yt', \
-              'cobaya', 'mpi4py', 'intel_openmp', 'dask', 'joblib', 'tbb']
+              'cobaya', 'mpi4py', 'intel_openmp', 'dask', 'joblib', 'tbb', 'ipykernel']
   red      = parallel + gpu
 
   printed_divider = False
