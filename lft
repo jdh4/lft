@@ -71,7 +71,7 @@ host = utils.known_hosts[hostname]
 # ldapsearch (causes code to seemingly hang for 1-2 seconds at start)
 username = sys.argv[1].split("@")[0].strip() if "@" in sys.argv[1] else sys.argv[1].strip()
 person = dossier.ldap_plus([username])
-netid = person[1][9]
+netid = person[1][8]
 if netid is None:
   print("")
   print(f"{username} not found in Princeton LDAP (or ldapsearch timed out). Exiting ...")
@@ -105,17 +105,17 @@ print("=" * width)
 
 # netid, name, groups, dept, position
 p = person[1]
-if p[9]:
+if p[8]:
  if netid == username:
-   print("   NetID:", term.bold(p[9]))
+   print("   NetID:", term.bold(p[8]))
  else:
-   print(f"   NetID: {term.bold(p[9])} ({term.bold}{term.red}{username} is alias{term.normal})")
+   print(f"   NetID: {term.bold(p[8])} ({term.bold}{term.red}{username} is alias{term.normal})")
 if p[0].startswith(": "):
   p[0] = base64.b64decode(p[0][2:].strip()).decode("utf-8")
 if p[0]: print("    Name:", p[0])
 print("  Groups:")  # completed below
 print("    Dept:", p[1]) if p[1] else print("    Dept: unknown")
-print("Position:", p[3]) if p[3] else print("Position: unknown")
+print("Position:", p[2]) if p[2] else print("Position: unknown")
 
 # user last active
 if isdir(home):
