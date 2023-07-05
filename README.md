@@ -21,7 +21,6 @@ lft is looking for trouble. Example usage:
 Options:
      -v  Verbose output (show packages and more jobs)
      -s  Show sponsor
-     -d  Compute the size of /home using du -sh
      -h  Show this help menu
 ```
 
