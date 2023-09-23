@@ -34,7 +34,6 @@ def print_help():
   print("Options:")
   print("     -v  Verbose output (show packages and more jobs)")
   print("     -s  Show sponsor")
-  print("     -d  Compute the size of /home using du -sh")
   print("     -h  Show this help menu")
   print("")
   sys.exit(0)

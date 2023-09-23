@@ -1,5 +1,8 @@
+# $ cd /tigress/jdh4/python-devel/lft
+# $ pytest
+
 import sys
-sys.path.append("../")
+sys.path.append(".")
 sys.path.append("/home/jdh4/bin/terminal-env/lib/python3.9/site-packages")
 from panes import utils
 from panes import sponsor as sp
@@ -13,14 +16,14 @@ def test_name():
   assert "Alan Turing" == utils.remove_middle_initial(name)
 
 def test_hostname_translation():
-  hostname = "adroit4"
+  hostname = "adroit5"
   assert utils.known_hosts[hostname] == "adroit"
 
 def test_is_rx():
   assert (utils.is_rx("/home"), utils.is_rx("/root")) == (True, False)
 
 def test_sponsor():
-  assert sp.get_sponsor("slala") == ("Niraj Jha", "jha")
+  assert sp.get_sponsor_netid_per_cluster_dict_from_ldap("slala")["tiger"] == "jha"
 
 def test_modules():
   lines = ["module load intel",

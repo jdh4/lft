@@ -44,6 +44,7 @@ def analyze_startup_script(flnm, default, default8, evars, netid):
         if line.startswith('#'): continue # ignore comments
         if (line.startswith('module') and ('load' in line or 'add' in line) and \
           not 'alias' in line):
+          line = line.split("#")[0]
           modules.append(line)
         if ('alias' in line): aliases += 1
         if ('export' in line): exports += 1
