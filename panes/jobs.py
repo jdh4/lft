@@ -317,7 +317,7 @@ def sacct(term, gutter, verbose, host, netid, days=3):
   sct = []
   if lines != [] and lines[-1] == '': lines = lines[:-1]
   if (lines == []):
-    return [f"{gutter}No jobs in last {24 * days} hours"]
+    return [f"{gutter}No jobs on {host} in last {24 * days} hours"]
   else:
     try:
       maxmem_per_job = get_maxrss(lines)
