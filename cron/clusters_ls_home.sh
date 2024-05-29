@@ -11,7 +11,7 @@ done
 ls /home > ./tiger_ls.txt 2>/dev/null
 
 # combine results from each cluster
-/usr/licensed/anaconda3/2020.7/bin/python combine_ls.py 2>/dev/null
+/usr/licensed/anaconda3/2023.9/bin/python combine_ls.py 2>/dev/null
 
 # push out master file to each cluster
 for cluster in adroit della tigressdata traverse stellar-intel
