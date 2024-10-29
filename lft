@@ -54,7 +54,7 @@ disk    = True if ('-d' in sys.argv) else False
 
 # check terminal size
 term = Terminal()
-width = 85
+width = 80
 gutter = ' '
 if (term.width < width):
   print(f"Terminal width too small ({term.width} < {width}). Exiting ...")

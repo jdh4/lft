@@ -165,6 +165,8 @@ def ondemand_last_used(app, opath, gutter):
 known_hosts = {
 'tigercpu.princeton.edu':'tiger',
 'tigergpu.princeton.edu':'tiger',
+'tiger3.princeton.edu':'tiger3',
+'tiger3-vis.princeton.edu':'tiger3',
 'della8.princeton.edu':'della',
 'della-gpu.princeton.edu':'della',
 'della-vis1.princeton.edu':'della',
