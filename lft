@@ -230,6 +230,7 @@ elif spon:
   # https://raw.githubusercontent.com/PrincetonUniversity/monthly_sponsor_reports/main/sponsor.py
   from panes import sponsor as sp
   d = sp.get_sponsor_netid_per_cluster_dict_from_ldap(netid)
+  host = "tiger" if host == "tiger3" else host
   sponsor = d[host]
   sponsor_full_name = sp.get_full_name_from_ldap(sponsor, use_rc=True, include_netid=False,
                                                  verbose=False, strip=False)
