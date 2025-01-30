@@ -1,13 +1,11 @@
-#!/usr/licensed/anaconda3/2023.9/bin/python
+#!/usr/licensed/anaconda3/2024.10/bin/python
 
 # output of "ls /home" for the different clusters is combined
 # and written to file
 
 import pandas as pd
 
-clusters = ['adroit_ls.txt', 'della_ls.txt', 'tiger3_ls.txt', \
-            'tiger_ls.txt', 'tigressdata_ls.txt', 'traverse_ls.txt', \
-            'stellar-intel_ls.txt']
+clusters = ['adroit_ls.txt', 'della_ls.txt', 'stellar-intel_ls.txt', 'tiger3_ls.txt']
 
 df = pd.read_csv(clusters[0], header=None)
 df.columns = ['netid']

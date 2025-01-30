@@ -4,7 +4,7 @@ For a given NetID, `lft` will crawl the `/home` directory of the user and run mu
 
 ## How to use it?
 
-Add this line to your `~/.bashrc` file on each cluster (Adroit, Della, Stellar, Tiger, Tigressdata and Traverse):
+Add this line to your `~/.bashrc` file on each cluster (Adroit, Della, Stellar, Tiger):
 
 ```bash
 alias lft='/home/jdh4/bin/lft'
@@ -42,7 +42,7 @@ Options:
 
 #### home directories
 + shows all the clusters where the user has a `/home` directory (this information is updated every 2 hours M-F from 7:30 am to 5:30 pm).
-+ shows which top-level directories are world-readable (`/home`, `/tigress`, `/scratch/gpfs`) and the number of items in each.
++ shows which top-level directories are world-readable (`/home`, `/projects`, `/scratch/gpfs`) and the number of items in each.
 
 #### .bashrc and .bash_profile
 + scans `.bashrc` and `.bash_profile` looking for the loading of environment modules and the setting of important environment variables (`PYTHONPATH`, `R_LIBS`, `R_LIBS_USER`) while reporting the state of each startup script as either `skeleton` or `custom`.
