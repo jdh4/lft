@@ -291,7 +291,7 @@ if home_exists and home_rx and (versions or ondemand):
 ###########################
 from panes import jobs as jb
 
-if home_exists and host != "tigressdata":
+if home_exists:
   shares = jb.sshare(term, gutter, host, netid)
   jobs = jb.squeue(gutter, host, netid)
   if shares or jobs:
