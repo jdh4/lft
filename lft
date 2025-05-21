@@ -144,7 +144,7 @@ if home_dirs:
     print("/home" + mtime)
     for hdir in sorted(home_dirs):
       pre = "*" if hdir in host else " "
-      print(term.move_x(67) + pre + hdir)
+      print(term.move_x(67) + pre + hdir.replace("tiger3", "tiger"))
 
 ###############################
 ## .bashrc and .bash_profile ##
