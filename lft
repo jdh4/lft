@@ -13,15 +13,18 @@ from datetime import datetime
 from time import time
 from socket import gethostname
 import base64
+import pwd
 
 # conda environment
 from blessed import Terminal
+import requests
 
 # self-written code
 from panes import utils
 from panes.utils import divider
 # https://github.com/jdh4/tigergpu_visualization/blob/master/dossier.py
 from panes import dossier
+
 
 ######################################
 ## evaluate command-line parameters ##
@@ -73,7 +76,7 @@ person = dossier.ldap_plus([username])
 netid = person[1][8]
 if netid is None:
   print("")
-  print(f"{username} not found in Princeton LDAP (or ldapsearch timed out). Exiting ...")
+  print(f"{username} not found in LDAP (or ldapsearch timed out or anaconda3/2025.6 is loaded). Exiting ...")
   print("")
   sys.exit(0)
 
@@ -123,6 +126,70 @@ else:
   print("  Active: N/A")
 if spon: print(" Sponsor:")  # completed below
 
+
+#################
+## /home usage ##
+#################
+class DataStorage:
+
+    PROM_SERVER = "http://cluster-stats:8480"
+
+    def __init__(self, cluster, username, fs, field):
+        self.cluster = cluster
+        self.username = username
+        self.field = field
+        self.fs = fs
+        self.params = {"query": f"{self.field}" + "{}"}
+        self.response = self.__get_data()
+        self.uid = self.__get_uid()
+        self.value = None
+
+    def __get_data(self):
+        try:
+            response = requests.get(f"{self.PROM_SERVER}/api/v1/query", self.params)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.ConnectionError:
+            return None
+        except requests.exceptions.RequestException:
+            return None
+        except:
+            return None
+
+    def __get_uid(self):
+        try:
+            user_info = pwd.getpwnam(self.username)
+            return str(user_info.pw_uid)
+        except KeyError:
+            return None
+        except:
+            return None
+
+    def get_value(self):
+        if self.response and "data" in self.response:
+            r = self.response["data"]["result"]
+            for res in r:
+                M = res["metric"]
+                if M["cluster"] == self.cluster and M["fs"] == self.fs and M["uid"] == self.uid:
+                    self.value = round(int(res["value"][1]) / 1024**3)
+ 
+home_usage = ""
+home_quota = ""
+ds = DataStorage(cluster=host,
+                 username=netid,
+                 fs="/home",
+                 field="fs_quota_block_usage_bytes")
+if ds.uid and ds.uid.isdigit():
+    ds.get_value()
+    home_usage = f"{ds.value}" if ds.value is not None else None
+ds = DataStorage(cluster=host,
+                 username=netid,
+                 fs="/home",
+                 field="fs_quota_block_limit_hard_bytes")
+if ds.uid and ds.uid.isdigit():
+    ds.get_value()
+    home_quota = f"{ds.value}GB" if ds.value is not None else None
+
 ######################
 ## home directories ##
 ######################
@@ -144,7 +211,11 @@ if home_dirs:
     print("/home" + mtime)
     for hdir in sorted(home_dirs):
       pre = "*" if hdir in host else " "
-      print(term.move_x(67) + pre + hdir.replace("tiger3", "tiger"))
+      hdir_ = hdir.replace("tiger3", "tiger")
+      if host == hdir and home_usage and home_quota:
+          print(term.move_x(67) + pre + hdir_ + f" ({home_usage}/{home_quota})")
+      else:
+          print(term.move_x(67) + pre + hdir_)
 
 ###############################
 ## .bashrc and .bash_profile ##
