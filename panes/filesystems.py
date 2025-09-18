@@ -21,20 +21,19 @@ class StringBox(list):
 def filesystems(term, gutter, host, netid, width, spon, home_exists, home_rx):
 
   fs = StringBox()
-  if host != "tigressdata":
 
-    path = '/scratch/gpfs/' + netid
+  path = '/scratch/gpfs/' + netid
+  if isdir(path):
+    fs.append(utils.public_or_private(path))
+
+  path = f'/projects/{netid[0]}/{netid}'
+  if isdir(path):
+    fs.append(utils.public_or_private(path))
+
+  if ('della' in host or 'adroit' in host):
+    path = '/scratch/network/' + netid
     if isdir(path):
       fs.append(utils.public_or_private(path))
-
-    path = '/tigress/' + netid
-    if isdir(path):
-      fs.append(utils.public_or_private(path))
-
-    if ('della' in host or 'adroit' in host):
-      path = '/scratch/network/' + netid
-      if isdir(path):
-        fs.append(utils.public_or_private(path))
 
   # align filesystems on colon
   def align_on_colon(s):

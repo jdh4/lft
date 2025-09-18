@@ -1,4 +1,4 @@
-# $ cd /tigress/jdh4/python-devel/lft
+# $ cd /projects/jdh4/python-devel/lft
 # $ pytest
 
 import sys
