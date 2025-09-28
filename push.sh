@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd /projects/j/jdh4/python-devel/lft
+cd /projects/CSES/jdh4/python-devel/lft
 
 # della cluster
 rm -rf panes/__pycache__
