@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd /projects/j/jdh4/python-devel/lft/cron
+cd /projects/CSES/jdh4/python-devel/lft/cron
 
 # pull in home directories from each cluster to here
 for cluster in adroit stellar-intel tiger3
