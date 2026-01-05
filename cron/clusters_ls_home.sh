@@ -9,6 +9,8 @@ do
   scp -q jdh4@${cluster}.princeton.edu:/home/jdh4/bin/cron/${cluster}_ls.txt . 2>/dev/null
 done
 ls /home > ./della_ls.txt 2>/dev/null
+ls /home.old >> ./della_ls.txt 2>/dev/null
+sort della_ls.txt | uniq > temp.txt && mv temp.txt della_ls.txt
 
 # combine results from each cluster
 /usr/licensed/anaconda3/2024.10/bin/python combine_ls.py 2>/dev/null
