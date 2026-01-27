@@ -4,6 +4,26 @@
 # and written to file
 
 import pandas as pd
+import subprocess
+
+# della only
+cmd = "getent netgroup della"
+result = subprocess.run(cmd,
+                        stdout=subprocess.PIPE,
+                        encoding="utf8",
+                        check=True,
+                        text=True,
+                        shell=True)
+rows = result.stdout.split('\n')
+pairs = "".join(rows).split()
+netids = []
+for pair in pairs:
+    if "(-," in pair:
+        netids.append(pair.replace("(-,", "").replace(",)", ""))
+with open("della_ls.txt", "w") as fp:
+    for netid in netids:
+        fp.write(f"{netid}\n")
+
 
 clusters = ['adroit_ls.txt', 'della_ls.txt', 'stellar-intel_ls.txt', 'tiger3_ls.txt']
 
@@ -16,6 +36,7 @@ for cluster in clusters[1:]:
   host = cluster.split('_')[0]
   tmp[host] = host
   df = pd.merge(df, tmp, on='netid', how='outer')
+
 
 df["stellar-intel"] = df["stellar-intel"].apply(lambda x: x if pd.isna(x) else x.replace("stellar-intel", "stellar"))
 df = df.sort_values(by='netid', ascending=True)
