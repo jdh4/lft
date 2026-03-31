@@ -30,7 +30,7 @@ def analyze_startup_script(flnm, default, default8, evars, netid):
   modules = []
   path = f"/home/{netid}/{flnm}"
   if os.path.isfile(path) and utils.is_r(path):
-    with open(path) as f:
+    with open(path, encoding='utf-8', errors='ignore') as f:
       lines = f.readlines()
     startup_rm  = remove_comments_and_white_space(lines)
     default_rm  = remove_comments_and_white_space(default)
