@@ -3,6 +3,7 @@
 cd /projects/CSES/jdh4/python-devel/lft
 
 # della cluster
+echo "della\n"
 rm -rf panes/__pycache__
 cp -p lft    $HOME/bin
 cp -r panes  $HOME/bin
