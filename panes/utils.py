@@ -176,7 +176,10 @@ known_hosts = {
 'stellar-intel.princeton.edu':'stellar',
 'stellar-amd.princeton.edu':'stellar',
 'stellar-vis1.princeton.edu':'stellar',
-'stellar-vis2.princeton.edu':'stellar'}
+'stellar-vis2.princeton.edu':'stellar',
+'stellarai-amd.princeton.edu':'stellarai',
+'stellarai-vis1.princeton.edu':'stellarai',
+'stellarai-vis2.princeton.edu':'stellarai'}
 
 #####################
 ## default .bashrc ##

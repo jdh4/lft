@@ -10,7 +10,7 @@ cp -r panes  $HOME/bin
 cp -r remind $HOME/bin
 
 # other clusters
-for cluster in adroit stellar-intel tiger3
+for cluster in adroit stellar-intel stellarai-amd tiger3
 do
   echo ${cluster}
   scp    lft    jdh4@${cluster}.princeton.edu:/home/jdh4/bin

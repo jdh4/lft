@@ -25,7 +25,7 @@ with open("della_ls.txt", "w") as fp:
         fp.write(f"{netid}\n")
 
 
-clusters = ['adroit_ls.txt', 'della_ls.txt', 'stellar-intel_ls.txt', 'tiger3_ls.txt']
+clusters = ['adroit_ls.txt', 'della_ls.txt', 'stellar-intel_ls.txt', 'stellarai-amd_ls.txt', 'tiger3_ls.txt']
 
 df = pd.read_csv(clusters[0], header=None)
 df.columns = ['netid']
@@ -39,5 +39,6 @@ for cluster in clusters[1:]:
 
 
 df["stellar-intel"] = df["stellar-intel"].apply(lambda x: x if pd.isna(x) else x.replace("stellar-intel", "stellar"))
+df["stellarai-amd"] = df["stellarai-amd"].apply(lambda x: x if pd.isna(x) else x.replace("stellarai-amd", "stellarai"))
 df = df.sort_values(by='netid', ascending=True)
 df.to_csv('combined_ls.csv', index=False)

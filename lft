@@ -229,7 +229,7 @@ if home_dirs:
   with term.location(65, 4):
     print("/home" + mtime)
     for hdir in sorted(home_dirs):
-      pre = "*" if hdir in host else " "
+      pre = "*" if hdir == host else " "
       hdir_ = hdir.replace("tiger3", "tiger")
       if host == hdir and home_usage and home_quota:
           print(term.move_x(67) + pre + hdir_ + f" ({home_usage}/{home_quota})")
